@@ -16,8 +16,11 @@ type ViewServer struct {
 	rpccount int32 // for testing
 	me       string
 
-
 	// Your declarations here.
+	currview *View
+	recentHeard map[string] time.Time
+	viewbound uint
+	//idleServers chan string
 }
 
 //
@@ -26,7 +29,44 @@ type ViewServer struct {
 func (vs *ViewServer) Ping(args *PingArgs, reply *PingReply) error {
 
 	// Your code here.
+	vs.recentHeard[args.Me] = time.Now()
 
+	// the view service may NOT proceed from view X to view X + 1
+	// if it has not received a Ping(X) from the primary of the view X
+
+	if vs.currview == nil { // init, Ping(0) from ck1
+
+		// as it now received a Ping(0) from primary => can proceed to Viewnum = 1
+		vs.viewbound = args.Viewnum // X is now 0
+		vs.currview = &View{args.Viewnum + 1, args.Me, ""}
+		reply.View = *vs.currview
+		return nil
+	}
+
+	// if the incoming Ping(X') its X' is larger than our view bound X
+	if vs.viewbound < args.Viewnum {
+		// e.g., Ping(1) from ck1: then 0 < 1
+		// received a Ping(1) from the primary ck1 => can proceed to Viewnum = 2
+		if vs.currview.Primary == args.Me {
+			vs.viewbound = args.Viewnum
+		} else {
+
+			// cannot proceed
+			log.Printf("failed: %d", args.Viewnum)
+			return nil
+		}
+	} else {
+		// vs.viewbound >= args.Viewnum
+		// e.g., Ping(0) from ck2. then 1 >= 0
+
+		if vs.currview.Backup == "" {
+			vs.currview.Backup = args.Me
+			vs.currview.Viewnum += 1
+		}
+
+	}
+
+	reply.View = *vs.currview
 	return nil
 }
 
@@ -36,7 +76,9 @@ func (vs *ViewServer) Ping(args *PingArgs, reply *PingReply) error {
 func (vs *ViewServer) Get(args *GetArgs, reply *GetReply) error {
 
 	// Your code here.
-
+	if vs.currview != nil {
+		reply.View = *vs.currview
+	}
 	return nil
 }
 
@@ -77,6 +119,10 @@ func StartServer(me string) *ViewServer {
 	vs := new(ViewServer)
 	vs.me = me
 	// Your vs.* initializations here.
+	vs.currview = nil
+	vs.recentHeard = make(map[string]time.Time)
+	vs.viewbound = 0
+	//vs.idleServers = make(chan string)
 
 	// tell net/rpc about our RPC server and handlers.
 	rpcs := rpc.NewServer()
