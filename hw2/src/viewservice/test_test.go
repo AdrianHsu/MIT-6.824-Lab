@@ -165,7 +165,7 @@ func Test1(t *testing.T) {
 	}
 	fmt.Printf("  ... Passed\n")
 
-	fmt.Printf("Test: Dead backup is removed from view ...\n") // i don't this this make sense
+	fmt.Printf("Test: Dead backup is removed from view ...\n") // i don't think this make sense
 	// it should be `checking backup is now promoted to be the primary`
 
 	// set up a view with just 3 as primary,
@@ -230,19 +230,29 @@ func Test1(t *testing.T) {
 			v, _ := ck1.Get() // v = {7, ck3, ck1}
 			ck1.Ping(v.Viewnum) // viewBound is already 7
 			ck2.Ping(0) // a new server joined -> idle
-			ck3.Ping(v.Viewnum)
+			ck3.Ping(v.Viewnum) // primary ack! finally. viewnum = 6 -> 7 now.
 			time.Sleep(PingInterval)
-		}
+		} // v = {8, ck3, ck2}
+		//v, _ := ck1.Get()
+		//log.Printf(v.Backup)
+
 		// wait for ck1, ck3 be dead...
+		// who dies first? does it matter?
+		// ck1.Ping(7) // UNCOMMENT this line will make ck1 dies later than ck3 as it has just pinged
 		for i := 0; i < DeadPings*2; i++ {
 			ck2.Ping(0)
 			time.Sleep(PingInterval)
 		}
-		// v = {7, ck3, ck1}. then ck1 dies first
-		// so we got v = {8, ck3, ck1}
-		// then we know the the viewBound is 7. so we cannot change view anymore
+		// v = {7, ck3, ck1}. viewnum=7. so we can proceed view by 1.
+		// then if case 1. ck1 dies first
+		// so we got v = {8, ck3, ck2}
+		// then we know that as viewBound is 7. so we cannot change view anymore
 		// now that ck3 dies. -> we want to be {9, ck2, _}
-		// but we cannot do that according to ack rule. So we are kepping {8, ck3, ck2}
+		// but we cannot do that according to ack rule. So we are keeping {8, ck3, ck2}
+
+		// else if case 2. ck3 dies first
+		// so we got v = {8, ck1, ck2}
+		// then ck1 dies -> we want to change to {9, ck2, _} but in vein. So we got {8, ck1, ck2}
 		vz, _ := ck2.Get() // vz = {8, ck3, ck2}
 		if vz.Primary == ck2.me {
 			t.Fatalf("uninitialized backup cannot be promote to primary")
