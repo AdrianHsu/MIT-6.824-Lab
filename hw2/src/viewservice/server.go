@@ -22,7 +22,8 @@ type ViewServer struct {
 	// keep track of whether the primary for the current view has acked it
 	viewBound uint // last value X of the primary Ping(X)
 
-	idleServers []string
+
+	idleServers map[string] bool
 }
 
 //
@@ -48,22 +49,32 @@ func (vs *ViewServer) Ping(args *PingArgs, reply *PingReply) error {
 			// e.g., Ping(1) from ck1: then 0 < 1
 			// received a Ping(1) from the primary ck1 => can proceed to Viewnum = 2
 			vs.viewBound = args.Viewnum
-		} else if args.Viewnum == 0 { // just got crashed and restarted
+		}
+		if args.Viewnum == 0 { // just got crashed and restarted
 			vs.replace(args.Me)
 		}
+
 	} else if args.Me == vs.currview.Backup {
+		if vs.viewBound < args.Viewnum { // do not change the view
+			//log.Printf("%v, %v", vs.viewBound, args.Viewnum)
 
-	} else {
-		if vs.currview.Primary == "" {
-			vs.currview.Primary = args.Me
-			vs.currview.Viewnum += 1
-		} else if vs.currview.Backup == "" {
-			vs.currview.Backup = args.Me
-			vs.currview.Viewnum += 1
 		} else {
-			vs.idleServers = append(vs.idleServers, args.Me) // ck3
-		}
 
+		}
+	} else {
+		if vs.viewBound < args.Viewnum {
+			//log.Printf("%v", vs.viewBound)
+		} else {
+			if vs.currview.Primary == "" {
+				vs.currview.Primary = args.Me
+				vs.currview.Viewnum += 1
+			} else if vs.currview.Backup == "" {
+				vs.currview.Backup = args.Me
+				vs.currview.Viewnum += 1
+			} else {
+				vs.idleServers[args.Me] = true
+			}
+		}
 	}
 
 	reply.View = *vs.currview
@@ -86,17 +97,26 @@ func (vs *ViewServer) Get(args *GetArgs, reply *GetReply) error {
 func (vs *ViewServer) replace(k string) {
 	if k == vs.currview.Primary {
 		vs.currview.Primary = vs.currview.Backup
-
-	} else if k == vs.currview.Backup {
-
-	}
-	if len(vs.idleServers) > 0 {
-		vs.currview.Backup = vs.idleServers[len(vs.idleServers) - 1]
-		vs.idleServers = vs.idleServers[:len(vs.idleServers) - 1]
-	} else {
 		vs.currview.Backup = ""
+		if len(vs.idleServers) > 0 {
+			for key, _ := range vs.idleServers {
+				vs.currview.Backup = key
+				delete(vs.idleServers, key)
+				break
+			}
+		}
+		vs.currview.Viewnum += 1
+	} else if k == vs.currview.Backup {
+		vs.currview.Backup = ""
+		if len(vs.idleServers) > 0 {
+			for key, _ := range vs.idleServers {
+				vs.currview.Backup = key
+				delete(vs.idleServers, key)
+				break
+			}
+		}
+		vs.currview.Viewnum += 1
 	}
-	vs.currview.Viewnum += 1
 }
 
 //
@@ -108,12 +128,12 @@ func (vs *ViewServer) tick() {
 
 	// Your code here.
 	for k, v := range vs.recentHeard {
-		//log.Printf(k)
-		//log.Printf(v.String())
-
 		if time.Now().After(v.Add(DeadPings * PingInterval)) {
 
-			vs.replace(k)
+			//log.Printf("%v, %v" , vs.viewBound + 1, vs.currview.Viewnum)
+			if vs.viewBound + 1 > vs.currview.Viewnum {
+				vs.replace(k)
+			}
 		}
 	}
 }
@@ -147,7 +167,7 @@ func StartServer(me string) *ViewServer {
 	vs.currview = nil
 	vs.recentHeard = make(map[string]time.Time)
 	vs.viewBound = 0
-	vs.idleServers = []string{}
+	vs.idleServers = make(map[string]bool)
 
 	// tell net/rpc about our RPC server and handlers.
 	rpcs := rpc.NewServer()

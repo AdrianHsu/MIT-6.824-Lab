@@ -1,6 +1,8 @@
 package viewservice
 
-import "testing"
+import (
+	"testing"
+)
 import "runtime"
 import "time"
 import "fmt"
@@ -9,6 +11,8 @@ import "strconv"
 
 func check(t *testing.T, ck *Clerk, p string, b string, n uint) {
 	view, _ := ck.Get()
+	//log.Printf("p=%v, b=%v, n=%v", view.Primary, view.Backup, view.Viewnum)
+
 	if view.Primary != p {
 		t.Fatalf("wanted primary %v, got %v", p, view.Primary)
 	}
@@ -183,24 +187,25 @@ func Test1(t *testing.T) {
 	{
 		// set up p=ck3 b=ck1, but
 		// but do not ack
-		vx, _ := ck1.Get()
+		vx, _ := ck1.Get() // vx = 6
 		for i := 0; i < DeadPings*3; i++ {
 			ck1.Ping(0)
 			ck3.Ping(vx.Viewnum)
-			v, _ := ck1.Get()
+			v, _ := ck1.Get() // v = 7, {ck3, ck1}
 			if v.Viewnum > vx.Viewnum {
 				break
 			}
 			time.Sleep(PingInterval)
 		}
 		check(t, ck1, ck3.me, ck1.me, vx.Viewnum+1)
-		vy, _ := ck1.Get()
+		vy, _ := ck1.Get() // vy = 7, {ck3, ck1}
 		// ck3 is the primary, but it never acked.
 		// let ck3 die. check that ck1 is not promoted.
 		for i := 0; i < DeadPings*3; i++ {
 			v, _ := ck1.Ping(vy.Viewnum)
-			if v.Viewnum > vy.Viewnum {
-				break
+			//log.Printf("v: %v, %v", vy.Viewnum, v.Viewnum)
+			if v.Viewnum > vy.Viewnum { // e.g., v = 8, 8 > 7
+				break // should not happen!
 			}
 			time.Sleep(PingInterval)
 		}
