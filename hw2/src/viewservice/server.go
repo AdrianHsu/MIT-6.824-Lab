@@ -17,12 +17,14 @@ type ViewServer struct {
 	me       string
 
 	// Your declarations here.
+
+	// Hint #2: add field(s) to ViewServer to keep track of the current view.
 	currview *View
 	recentHeard map[string] time.Time
-	// keep track of whether the primary for the current view has acked it
-	viewBound uint // last value X of the primary Ping(X)
 
-
+	// Hint #3: keep track of whether the primary for the current view has acknowledged it
+	// keep track of whether the primary for the current view has acked the latest view X
+	viewBound uint // last value view X of the primary Ping(X)
 	idleServers map[string] bool
 }
 
@@ -32,49 +34,40 @@ type ViewServer struct {
 func (vs *ViewServer) Ping(args *PingArgs, reply *PingReply) error {
 
 	// Your code here.
+	// Hint #1: you'll want to add field(s) to ViewServer in server.go
+	// in order to keep track of the most recent time at which
+	// the viewservice has heard a Ping from each server.
 	vs.recentHeard[args.Me] = time.Now()
 
-	// the view service may NOT proceed from view X to view X + 1
-	// if it has not received a Ping(X) from the primary of the view X
-
-	if vs.currview == nil { // init, Ping(0) from ck1
-		// as it now received a Ping(0) from primary => can proceed to Viewnum = 1
-		vs.viewBound = 0 // X is now 0
+	if vs.currview == nil { // init, Ping(0) from ck1. only do this one time
+		vs.viewBound = args.Viewnum // X is now 0
 		vs.currview = &View{0, "", ""}
+		// ps. as it now received a Ping(0) from primary => can proceed to Viewnum = 1
 	}
 
 	if args.Me == vs.currview.Primary {
-		// if the incoming Ping(X') its X' is larger than our view bound X
+		// if the incoming Ping(X'): its X' is larger than our view bound X
+		// e.g., in the test case #2: Ping(1) from ck1: then 0 < 1
+		// received a Ping(1) from the primary ck1 => can later proceed to Viewnum = 2
 		if vs.viewBound < args.Viewnum {
-			// e.g., Ping(1) from ck1: then 0 < 1
-			// received a Ping(1) from the primary ck1 => can proceed to Viewnum = 2
 			vs.viewBound = args.Viewnum
 		}
+		// Hint #6: the viewservice needs a way to detect that
+		// a primary or backup has failed and re-started.
+		// Therefore, we set that when a server re-starts after a crash,
+		// it should send one or more Pings with an argument of zero to
+		// inform the view service that it crashed.
 		if args.Viewnum == 0 { // just got crashed and restarted
-			vs.replace(args.Me)
+			vs.replace(args.Me) // force replace
 		}
-
 	} else if args.Me == vs.currview.Backup {
-		if vs.viewBound < args.Viewnum { // do not change the view
-			//log.Printf("%v, %v", vs.viewBound, args.Viewnum)
-
-		} else {
-
+		// same as above.
+		if args.Viewnum == 0 { // just got crashed and restarted
+			vs.replace(args.Me) // force replace
 		}
 	} else {
-		if vs.viewBound < args.Viewnum {
-			//log.Printf("%v", vs.viewBound)
-		} else {
-			if vs.currview.Primary == "" {
-				vs.currview.Primary = args.Me
-				vs.currview.Viewnum += 1
-			} else if vs.currview.Backup == "" {
-				vs.currview.Backup = args.Me
-				vs.currview.Viewnum += 1
-			} else {
-				vs.idleServers[args.Me] = true
-			}
-		}
+		// an idle server comes in.
+		vs.assignRole(args.Me)
 	}
 
 	reply.View = *vs.currview
@@ -93,29 +86,78 @@ func (vs *ViewServer) Get(args *GetArgs, reply *GetReply) error {
 	return nil
 }
 
-// crafted by Adrian
+// edited by Adrian
+func (vs *ViewServer) backupByIdleSrv() {
+	// only when idleServers exists will the backup be filled in
+	if len(vs.idleServers) > 0 {
+		for key, _ := range vs.idleServers {
+			vs.currview.Backup = key // backup will be set
+			delete(vs.idleServers, key) // to keep the size of map
+			break
+		}
+	}
+}
+
+// edited by Adrian
 func (vs *ViewServer) replace(k string) {
-	if k == vs.currview.Primary {
-		vs.currview.Primary = vs.currview.Backup
-		vs.currview.Backup = ""
-		if len(vs.idleServers) > 0 {
-			for key, _ := range vs.idleServers {
-				vs.currview.Backup = key
-				delete(vs.idleServers, key)
-				break
-			}
+	// IMPORTANT!
+	// the view service may NOT proceed from view X to view X + 1
+	// if it has not received a Ping(X) from the primary of the view X
+
+	// vs.viewBound is the latest view number of which the current primary
+	// has already send back an ack to the view service
+	// e.g., viewBound = 6 means that the current primary ck_i has sent a
+	// Ping(6) to the view service successfully. the View {p=cki, b=_, n=6} is acked
+
+	// if current view's Viewnum in view service = 6, then 6 + 1 > 6
+	// so you can do the vs.replace(k) and the Viewnum of vs will be 7
+	// however, if current view's Viewnum in the vs = 7, then 6 + 1 > 7 doesn't hold
+	// so you CANNOT do the replacement even though many rounds of tick() may have passed
+
+	// X = 6, X+1 = 7:
+	// the vs CANNOT proceed from view 7 to view 8 as it has not received a Ping(7)
+	// from the primary of the view X. the current viewBound is still 7
+	// see testcase: `Viewserver waits for primary to ack view`
+	if vs.viewBound + 1 > vs.currview.Viewnum {
+
+		if k == vs.currview.Primary {
+			// if k is the current primary -> remove this primary
+			vs.currview.Primary = vs.currview.Backup
+			vs.currview.Backup = ""
+			vs.backupByIdleSrv()
+			vs.currview.Viewnum += 1
+		} else if k == vs.currview.Backup {
+			// if k is the current backup -> remove this backup
+			vs.currview.Backup = ""
+			vs.backupByIdleSrv()
+			vs.currview.Viewnum += 1
+		} // if k is neither of both -> we don't do anything
+	} else {
+		log.Printf("cannot change view: current view not yet acked by primary:\n" +
+			"viewBound=%v, vs.currview.Viewnum=%v", vs.viewBound, vs.currview.Viewnum)
+	}
+}
+
+// edited by Adrian
+func (vs *ViewServer) assignRole(me string) {
+
+	// ack rule: same idea as the `replace()` function
+	if vs.viewBound + 1 > vs.currview.Viewnum {
+		// the current ping is from an arbitrary server (not primary, nor backup)
+		// new server has joined! what job should it do? primary? backup? or idle?
+		if vs.currview.Primary == "" {
+			vs.currview.Primary = me
+			vs.currview.Viewnum += 1
+		} else if vs.currview.Backup == "" {
+			vs.currview.Backup = me
+			vs.currview.Viewnum += 1
+		} else {
+			vs.idleServers[me] = true
+			// do not add the viewnum
 		}
-		vs.currview.Viewnum += 1
-	} else if k == vs.currview.Backup {
-		vs.currview.Backup = ""
-		if len(vs.idleServers) > 0 {
-			for key, _ := range vs.idleServers {
-				vs.currview.Backup = key
-				delete(vs.idleServers, key)
-				break
-			}
-		}
-		vs.currview.Viewnum += 1
+	} else {
+		log.Printf("cannot change view: current view not yet acked by primary:\n " +
+			"viewBound=%v, vs.currview.Viewnum=%v", vs.viewBound, vs.currview.Viewnum)
 	}
 }
 
@@ -125,15 +167,16 @@ func (vs *ViewServer) replace(k string) {
 // accordingly.
 //
 func (vs *ViewServer) tick() {
-
 	// Your code here.
-	for k, v := range vs.recentHeard {
-		if time.Now().After(v.Add(DeadPings * PingInterval)) {
 
-			//log.Printf("%v, %v" , vs.viewBound + 1, vs.currview.Viewnum)
-			if vs.viewBound + 1 > vs.currview.Viewnum {
-				vs.replace(k)
-			}
+	// Hint #4: your viewservice needs to make periodic decisions,
+	// for example to promote the backup if the viewservice has missed
+	// DeadPings pings from the primary.
+	for k, v := range vs.recentHeard {
+		// if current time time.Now() > (recentHeard time + some timeout)
+		// then we need to replace this server `k`
+		if time.Now().After(v.Add(DeadPings * PingInterval)) {
+			vs.replace(k)
 		}
 	}
 }
