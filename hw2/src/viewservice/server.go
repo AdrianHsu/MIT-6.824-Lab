@@ -24,6 +24,8 @@ type ViewServer struct {
 
 	// Hint #3: keep track of whether the primary for the current view has acknowledged it
 	// keep track of whether the primary for the current view has acked the latest view X
+	// viewBound = 7 means that the current primary has acked the view 7. And the way
+	// it did the ACK is by sending an Ping(7)
 	viewBound uint // last value view X of the primary Ping(X)
 	idleServers map[string] bool
 }
@@ -133,8 +135,8 @@ func (vs *ViewServer) replace(k string) {
 			vs.currview.Viewnum += 1
 		} // if k is neither of both -> we don't do anything
 	} else {
-		log.Printf("cannot change view: current view not yet acked by primary:\n" +
-			"viewBound=%v, vs.currview.Viewnum=%v", vs.viewBound, vs.currview.Viewnum)
+		//log.Printf("cannot change view: current view not yet acked by primary:\n" +
+		//	"viewBound=%v, vs.currview.Viewnum=%v", vs.viewBound, vs.currview.Viewnum)
 	}
 }
 
@@ -156,8 +158,8 @@ func (vs *ViewServer) assignRole(me string) {
 			// do not add the viewnum
 		}
 	} else {
-		log.Printf("cannot change view: current view not yet acked by primary:\n " +
-			"viewBound=%v, vs.currview.Viewnum=%v", vs.viewBound, vs.currview.Viewnum)
+		//log.Printf("cannot change view: current view not yet acked by primary:\n " +
+			//"viewBound=%v, vs.currview.Viewnum=%v", vs.viewBound, vs.currview.Viewnum)
 	}
 }
 

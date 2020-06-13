@@ -13,9 +13,12 @@ type PutAppendArgs struct {
 	Key   string
 	Value string
 	// You'll have to add definitions here.
-
+	Op string
+	HashVal int64
+	Me string
 	// Field names must start with capital letters,
 	// otherwise RPC will break.
+
 }
 
 type PutAppendReply struct {
@@ -32,5 +35,12 @@ type GetReply struct {
 	Value string
 }
 
-
 // Your RPC definitions here.
+type RsyncArgs struct {
+	Database map[string]string
+	HashVals map[int64]bool
+}
+
+type RsyncReply struct {
+	Err   Err
+}

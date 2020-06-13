@@ -20,15 +20,50 @@ type PBServer struct {
 	dead       int32 // for testing
 	unreliable int32 // for testing
 	me         string
+	// To the vs, this PBServer is acting like a clerk.
+	// so we set up a clerk ptr to do Ping and some stuff.
 	vs         *viewservice.Clerk
+
+
 	// Your declarations here.
+	currview *viewservice.View
+	database map[string]string
+	hashVals map[int64]bool
+
 }
 
+// edited by Adrian
+func (pb *PBServer) RsyncReceive(args *RsyncArgs, reply *RsyncReply) error {
+
+	pb.database = args.Database
+	pb.hashVals = args.HashVals
+	return nil
+}
+
+// edited by Adrian
+// initiate by the Primary
+func (pb *PBServer) RsyncSend(backup string) error {
+	args := &RsyncArgs{pb.database, pb.hashVals}
+	var reply RsyncReply
+	call(backup, "PBServer.RsyncReceive", args, reply)
+	return nil
+}
+
+// edited by Adrian
+func (pb *PBServer) Forward(args *PutAppendArgs, reply *PutAppendReply) error {
+
+	if args.Me != pb.currview.Primary { // the caller is not primary anymore
+		reply.Err = "not primary..."
+	} else {
+		pb.PutAppend(args, reply)
+	}
+	return nil
+}
 
 func (pb *PBServer) Get(args *GetArgs, reply *GetReply) error {
 
 	// Your code here.
-
+	reply.Value = pb.database[args.Key]
 	return nil
 }
 
@@ -36,8 +71,29 @@ func (pb *PBServer) Get(args *GetArgs, reply *GetReply) error {
 func (pb *PBServer) PutAppend(args *PutAppendArgs, reply *PutAppendReply) error {
 
 	// Your code here.
+	key := args.Key
+	value := args.Value
+	op := args.Op
+	hashVal := args.HashVal
 
+	if op == "Put" {
+		pb.database[key] = value
+	} else if op == "Append" {
+		// Append should use an empty string for the previous value
+		// if the key doesn't exist
+		if pb.hashVals[hashVal] == true {
+			// skip
+		} else {
+			pb.database[key] += value
+			pb.hashVals[hashVal] = true
+		}
+	}
 
+	if pb.currview.Primary == pb.me {
+		args.Me = pb.me
+		call(pb.currview.Backup, "PBServer.Forward", args, &reply)
+		//log.Printf("forward: %v", ok)
+	}
 	return nil
 }
 
@@ -51,6 +107,17 @@ func (pb *PBServer) PutAppend(args *PutAppendArgs, reply *PutAppendReply) error 
 func (pb *PBServer) tick() {
 
 	// Your code here.
+	newview, _ := pb.vs.Ping(pb.currview.Viewnum)
+
+	if pb.currview.Primary == pb.me {
+		// case 1. {s1, _} -> {s1, s2} // s2 is the new backup
+		// case 2. {s1, s2} -> s2 dies -> {s1, s3}
+		// note that in case 2, `b` will not be "" at that intermediate state
+		if pb.currview.Backup != newview.Backup {
+			pb.RsyncSend(newview.Backup)
+		}
+	}
+	pb.currview = &newview
 }
 
 // tell the server to shut itself down.
@@ -85,6 +152,9 @@ func StartServer(vshost string, me string) *PBServer {
 	pb.vs = viewservice.MakeClerk(me, vshost)
 	// Your pb.* initializations here.
 
+	pb.currview = &viewservice.View{}
+	pb.database = make(map[string]string)
+	pb.hashVals = make(map[int64]bool)
 	rpcs := rpc.NewServer()
 	rpcs.Register(pb)
 
