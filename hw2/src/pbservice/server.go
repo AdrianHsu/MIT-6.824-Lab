@@ -35,8 +35,10 @@ type PBServer struct {
 // edited by Adrian
 func (pb *PBServer) RsyncReceive(args *RsyncArgs, reply *RsyncReply) error {
 
+	pb.mu.Lock()
 	pb.database = args.Database
 	pb.hashVals = args.HashVals
+	pb.mu.Unlock()
 	return nil
 }
 
@@ -63,7 +65,9 @@ func (pb *PBServer) Forward(args *PutAppendArgs, reply *PutAppendReply) error {
 func (pb *PBServer) Get(args *GetArgs, reply *GetReply) error {
 
 	// Your code here.
+	pb.mu.Lock()
 	reply.Value = pb.database[args.Key]
+	pb.mu.Unlock()
 	return nil
 }
 
@@ -76,6 +80,7 @@ func (pb *PBServer) PutAppend(args *PutAppendArgs, reply *PutAppendReply) error 
 	op := args.Op
 	hashVal := args.HashVal
 
+	pb.mu.Lock()
 	if op == "Put" {
 		pb.database[key] = value
 	} else if op == "Append" {
@@ -88,6 +93,7 @@ func (pb *PBServer) PutAppend(args *PutAppendArgs, reply *PutAppendReply) error 
 			pb.hashVals[hashVal] = true
 		}
 	}
+	defer pb.mu.Unlock()
 
 	if pb.currview.Primary == pb.me {
 		args.Me = pb.me
