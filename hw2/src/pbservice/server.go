@@ -40,7 +40,7 @@ func (pb *PBServer) Bootstrapped(args *BootstrapArgs, reply *BootstrapReply) err
 	pb.mu.Lock()
 	pb.database = args.Database
 	pb.hashVals = args.HashVals
-	defer pb.mu.Unlock()
+	pb.mu.Unlock()
 	return nil
 }
 
@@ -53,6 +53,7 @@ func (pb *PBServer) Bootstrapping(backup string) error {
 
 	ok := false
 	for ok == false {
+		//log.Printf("%v, %v", pb.me, backup)
 		ok = call(backup, "PBServer.Bootstrapped", args, &reply)
 		if ok {
 			break
@@ -68,10 +69,17 @@ func (pb *PBServer) Bootstrapping(backup string) error {
 // forward any state necessary for backup to `mimic` the execution
 func (pb *PBServer) Forward(args *PutAppendArgs, reply *PutAppendReply) error {
 
-	// the backup first need to check if the primary is still the current primary
+	// basically you don't need this.
+	// if the backup is dead and then the primary do `Forward` -> the connection will fail
+	//if pb.isdead() {
+	//	reply.Err = "I'm already dead"
+	//	return nil
+	//}
+
 	if args.Primary != pb.currview.Primary {
+		// the backup first need to check if the primary is still the current primary
 		// the caller is not primary anymore
-		reply.Err = "you are not the current primary..."
+		reply.Err = "Forward fails: you are not the current primary..."
 	} else {
 		pb.PutAppend(args, reply)
 	}
@@ -81,6 +89,7 @@ func (pb *PBServer) Forward(args *PutAppendArgs, reply *PutAppendReply) error {
 func (pb *PBServer) Get(args *GetArgs, reply *GetReply) error {
 
 	// Your code here.
+
 	pb.mu.Lock()
 	reply.Value = pb.database[args.Key]
 	pb.mu.Unlock()
@@ -107,24 +116,42 @@ func (pb *PBServer) PutAppend(args *PutAppendArgs, reply *PutAppendReply) error 
 		}
 	}
 	// defer statement defers the execution of a function until the surrounding function returns.
+	// to make sure that when I'm doing Forward for my backup, my own map will not be modified by others.
 	defer pb.mu.Unlock()
 
+	// quick check. as the backup will also call this PutAppend(). not just the primary.
 	if pb.isPrimaryInCache() {
 		args.Primary = pb.me
-		ok := call(pb.currview.Backup, "PBServer.Forward", args, &reply)
-		//log.Printf("forward: %v", ok)
-		if ok == false {
-			// there might be 2 cases:
-			// 1. the primary is no longer the primary (split-brain)
-			// 2. the backup is dead or not exist
 
-			if pb.vs.Primary() != pb.me {
-				reply.Err = "forward PutAppend fails..."
-			} else {
-				// it should be fine. The problem is bc of the backup, not the primary iteself.
+		// IMPORTANT:
+		// only if the primary and the backup is `externally consistent`
+		// will the primary respond to the client, i.e., to make this change `externally visible`
+		ok := pb.currview.Backup == "" // if there is no backup currently -> don't do Forward
+
+		for ok == false {
+			ok = call(pb.currview.Backup, "PBServer.Forward", args, &reply)
+			//log.Printf("forward: %v", ok)
+			if ok == false {
+				// there might be 3 cases:
+				newview, _ := pb.vs.Get()
+				if newview.Primary != pb.me {
+					// 1. the primary is no longer the primary (split-brain)
+					reply.Err = "PutAppend fails: I am no longer the primary. Sorry!"
+					break
+				} else if newview.Backup == "" {
+					reply.Err = "PutAppend fails: the backup not exists now. break."
+					break
+				} else {
+					// 2. the backup is dead but the primary doesn't discover yet. {s1, s2} but is in fact {s1, _}
+					// it should be fine. The problem is bc of the backup, not the primary itself. -> retry later
+					// (wait for tick() to update the new backup)
+					// 3. the reason is the unreliable network between P & B. -> retry later.
+					time.Sleep(viewservice.PingInterval) // wait for the tick() to update view service's view
+				}
 			}
 		}
 	}
+
 	return nil
 }
 
@@ -143,8 +170,9 @@ func (pb *PBServer) tick() {
 	if pb.isPrimaryInCache() {
 		// case 1. {s1, _} -> {s1, s2} // s2 is the new backup
 		// case 2. {s1, s2} -> s2 dies -> {s1, s3} // s3 is the new backup
-		// note that in case 2, `b` will not be "" at that intermediate state
-		// as it was already replaced when primary got notified
+		// note that in case 2, `b` will not be "" at that intermediate state since we called backupByIdleSrv()
+		// -> it was already replaced when primary got notified
+		//log.Printf("p=%v, b=%v, b'=%v", newview.Primary, newview.Backup, pb.currview.Backup)
 		if pb.currview.Backup != newview.Backup {
 			pb.Bootstrapping(newview.Backup)
 		}

@@ -151,6 +151,7 @@ func TestBasicFail(t *testing.T) {
 	fmt.Printf("Test: Kill last server, new one should not be active ...\n")
 
 	s2.kill()
+	// when s3 gets started, the s2 is already dead
 	s3 := StartServer(vshost, port(tag, 3))
 	time.Sleep(1 * time.Second)
 	get_done := make(chan bool)
@@ -228,6 +229,7 @@ func TestAtMostOnce(t *testing.T) {
 	time.Sleep(time.Second)
 }
 
+
 // Put right after a backup dies.
 func TestFailPut(t *testing.T) {
 	runtime.GOMAXPROCS(4)
@@ -268,7 +270,10 @@ func TestFailPut(t *testing.T) {
 
 	// kill backup, then immediate Put
 	fmt.Printf("Test: Put() immediately after backup failure ...\n")
-	s2.kill()
+	s2.kill() // backup dies
+
+	// put right after the backup dies
+	// what will happen? the primary may not know the backup is already dead
 	ck.Put("a", "aaa")
 	check(ck, "a", "aaa")
 
@@ -305,7 +310,7 @@ func TestFailPut(t *testing.T) {
 
 	check(ck, "a", "aaa")
 	check(ck, "b", "bbb")
-	check(ck, "c", "cc")
+	check(ck, "c", "cc") // should comes from bootstrapping s1->s3
 	fmt.Printf("  ... Passed\n")
 
 	s1.kill()
