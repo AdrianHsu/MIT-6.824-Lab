@@ -80,20 +80,27 @@ func (ck *Clerk) Get(key string) string {
 
 
 	// Your code here.
-	if ck.currPrimary == "" {
+	// if the current view has no primary, keep asking vs until a primary shows up
+	for ck.currPrimary == "" {
 		view, _ := ck.vs.Get()
 		ck.currPrimary = view.Primary
 	}
 
 	args := &GetArgs{key}
 	var reply GetReply
-	ok := call(ck.currPrimary, "PBServer.Get", args, &reply)
-	if ok {
-		return reply.Value
-	} else {
-		ck.currPrimary = ""
-		return ck.Get(key)
+	ok := false
+	for ok == false {
+		ok := call(ck.currPrimary, "PBServer.Get", args, &reply)
+		if ok {
+			break
+		} else {
+			// if the current primary is dead OR it doesn't think itself as the primary
+			time.Sleep(viewservice.PingInterval)
+			view, _ := ck.vs.Get()
+			ck.currPrimary = view.Primary
+		}
 	}
+	return reply.Value
 }
 
 //
@@ -102,19 +109,24 @@ func (ck *Clerk) Get(key string) string {
 func (ck *Clerk) PutAppend(key string, value string, op string) {
 
 	// Your code here.
-	if ck.currPrimary == "" {
+	// if the current view has no primary, keep asking vs until a primary shows up
+	for ck.currPrimary == "" {
 		view, _ := ck.vs.Get()
 		ck.currPrimary = view.Primary
 	}
+
+	// nrand(): make the k/v service can detect duplicates.
 	args := &PutAppendArgs{key, value, op, nrand(), ""}
 	var reply PutAppendReply
+
 	ok := false
+	// clients keep re-trying until they get an answer.
 	for ok == false {
 		ok := call(ck.currPrimary, "PBServer.PutAppend", args, &reply)
 		if ok {
-			// success. do nothing
 			break
 		} else {
+			// if the current primary is dead OR it doesn't think itself as the primary
 			time.Sleep(viewservice.PingInterval)
 			view, _ := ck.vs.Get()
 			ck.currPrimary = view.Primary

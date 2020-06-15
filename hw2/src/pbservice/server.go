@@ -28,34 +28,50 @@ type PBServer struct {
 	// Your declarations here.
 	currview *viewservice.View
 	database map[string]string
+	// hashVals acts as the state to filter duplicates
 	hashVals map[int64]bool
 
 }
 
 // edited by Adrian
-func (pb *PBServer) RsyncReceive(args *RsyncArgs, reply *RsyncReply) error {
+// the new backup got bootstrapped.
+func (pb *PBServer) Bootstrapped(args *BootstrapArgs, reply *BootstrapReply) error {
 
 	pb.mu.Lock()
 	pb.database = args.Database
 	pb.hashVals = args.HashVals
-	pb.mu.Unlock()
+	defer pb.mu.Unlock()
 	return nil
 }
 
 // edited by Adrian
-// initiate by the Primary
-func (pb *PBServer) RsyncSend(backup string) error {
-	args := &RsyncArgs{pb.database, pb.hashVals}
-	var reply RsyncReply
-	call(backup, "PBServer.RsyncReceive", args, reply)
+// initiate by the Primary when bootstrapping new backup
+func (pb *PBServer) Bootstrapping(backup string) error {
+
+	args := &BootstrapArgs{pb.database, pb.hashVals}
+	var reply BootstrapReply
+
+	ok := false
+	for ok == false {
+		ok = call(backup, "PBServer.Bootstrapped", args, &reply)
+		if ok {
+			break
+		} else {
+			time.Sleep(viewservice.PingInterval)
+		}
+	}
 	return nil
 }
 
 // edited by Adrian
+// to leverage determinism of the state machine
+// forward any state necessary for backup to `mimic` the execution
 func (pb *PBServer) Forward(args *PutAppendArgs, reply *PutAppendReply) error {
 
-	if args.Me != pb.currview.Primary { // the caller is not primary anymore
-		reply.Err = "not primary..."
+	// the backup first need to check if the primary is still the current primary
+	if args.Primary != pb.currview.Primary {
+		// the caller is not primary anymore
+		reply.Err = "you are not the current primary..."
 	} else {
 		pb.PutAppend(args, reply)
 	}
@@ -75,30 +91,39 @@ func (pb *PBServer) Get(args *GetArgs, reply *GetReply) error {
 func (pb *PBServer) PutAppend(args *PutAppendArgs, reply *PutAppendReply) error {
 
 	// Your code here.
-	key := args.Key
-	value := args.Value
-	op := args.Op
-	hashVal := args.HashVal
 
 	pb.mu.Lock()
-	if op == "Put" {
-		pb.database[key] = value
-	} else if op == "Append" {
-		// Append should use an empty string for the previous value
-		// if the key doesn't exist
-		if pb.hashVals[hashVal] == true {
-			// skip
-		} else {
-			pb.database[key] += value
-			pb.hashVals[hashVal] = true
+	if args.Op == "Put" {
+		pb.database[args.Key] = args.Value
+	} else if args.Op == "Append" {
+
+		// detect duplicates
+		if pb.hashVals[args.HashVal] != true {
+
+			// Append should use an empty string for the previous value
+			// if the key doesn't exist
+			pb.database[args.Key] += args.Value
+			pb.hashVals[args.HashVal] = true
 		}
 	}
+	// defer statement defers the execution of a function until the surrounding function returns.
 	defer pb.mu.Unlock()
 
-	if pb.currview.Primary == pb.me {
-		args.Me = pb.me
-		call(pb.currview.Backup, "PBServer.Forward", args, &reply)
+	if pb.isPrimaryInCache() {
+		args.Primary = pb.me
+		ok := call(pb.currview.Backup, "PBServer.Forward", args, &reply)
 		//log.Printf("forward: %v", ok)
+		if ok == false {
+			// there might be 2 cases:
+			// 1. the primary is no longer the primary (split-brain)
+			// 2. the backup is dead or not exist
+
+			if pb.vs.Primary() != pb.me {
+				reply.Err = "forward PutAppend fails..."
+			} else {
+				// it should be fine. The problem is bc of the backup, not the primary iteself.
+			}
+		}
 	}
 	return nil
 }
@@ -115,15 +140,23 @@ func (pb *PBServer) tick() {
 	// Your code here.
 	newview, _ := pb.vs.Ping(pb.currview.Viewnum)
 
-	if pb.currview.Primary == pb.me {
+	if pb.isPrimaryInCache() {
 		// case 1. {s1, _} -> {s1, s2} // s2 is the new backup
-		// case 2. {s1, s2} -> s2 dies -> {s1, s3}
+		// case 2. {s1, s2} -> s2 dies -> {s1, s3} // s3 is the new backup
 		// note that in case 2, `b` will not be "" at that intermediate state
+		// as it was already replaced when primary got notified
 		if pb.currview.Backup != newview.Backup {
-			pb.RsyncSend(newview.Backup)
+			pb.Bootstrapping(newview.Backup)
 		}
 	}
 	pb.currview = &newview
+}
+
+// edited by Adrian
+// this PBServer regards itself as the primary according to its local cache
+// but of course, there is no promise that it IS the current primary
+func (pb *PBServer) isPrimaryInCache() bool {
+	return pb.currview.Primary == pb.me
 }
 
 // tell the server to shut itself down.
