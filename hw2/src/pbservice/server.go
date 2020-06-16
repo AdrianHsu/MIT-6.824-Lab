@@ -39,8 +39,12 @@ type PBServer struct {
 func (pb *PBServer) Bootstrapped(args *BootstrapArgs, reply *BootstrapReply) error {
 
 	pb.rwm.Lock()
-	pb.database = args.Database
-	pb.hashVals = args.HashVals
+	for k, v := range args.Database {
+		pb.database[k] = v
+	}
+	for k, v := range args.HashVals {
+		pb.hashVals[k] = v
+	}
 	pb.rwm.Unlock()
 	return nil
 }
