@@ -17,11 +17,26 @@ type PutAppendArgs struct {
 	// otherwise RPC will break.
 	Op string
 	HashVal int64
+}
+
+type PutAppendReply struct {
+	Err Err
+}
+
+// Put or Append
+type PutAppendSyncArgs struct {
+	Key   string
+	Value string
+	// You'll have to add definitions here.
+	// Field names must start with capital letters,
+	// otherwise RPC will break.
+	Op string
+	HashVal int64
 	Primary string
 
 }
 
-type PutAppendReply struct {
+type PutAppendSyncReply struct {
 	Err Err
 }
 

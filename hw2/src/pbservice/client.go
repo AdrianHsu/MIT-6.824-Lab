@@ -116,17 +116,22 @@ func (ck *Clerk) PutAppend(key string, value string, op string) {
 	}
 
 	// nrand(): make the k/v service can detect duplicates.
-	args := &PutAppendArgs{key, value, op, nrand(), ""}
+	args := &PutAppendArgs{key, value, op, nrand()}
 	var reply PutAppendReply
 
 	ok := false
 	// clients keep re-trying until they get an answer.
 	for ok == false {
+		//log.Printf("%v", ck.currPrimary)
 		ok := call(ck.currPrimary, "PBServer.PutAppend", args, &reply)
+		//log.Printf("%v, %v", ok, ck.currPrimary)
+
 		if ok {
+			// everything works fine
 			break
 		} else {
-			// if the current primary is dead OR it doesn't think itself as the primary
+			// network failed. retry
+			// OR if the current primary is dead
 			time.Sleep(viewservice.PingInterval)
 			view, _ := ck.vs.Get()
 			ck.currPrimary = view.Primary
