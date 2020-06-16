@@ -15,10 +15,7 @@ import "math/rand"
 
 
 type PBServer struct {
-	// defer statement defers the execution of a function until the surrounding function returns.
-	// to make sure that when I'm doing Forward for my backup, my own map will not be modified by others.
 	mu         sync.Mutex
-
 	l          net.Listener
 	dead       int32 // for testing
 	unreliable int32 // for testing
@@ -31,8 +28,6 @@ type PBServer struct {
 	// Your declarations here.
 	currview *viewservice.View
 	database map[string]string
-	rwm     sync.RWMutex
-
 	// hashVals acts as the state to filter duplicates
 	hashVals map[int64]bool
 
@@ -42,17 +37,10 @@ type PBServer struct {
 // the new backup got bootstrapped.
 func (pb *PBServer) Bootstrapped(args *BootstrapArgs, reply *BootstrapReply) error {
 
-	pb.rwm.Lock()
-	log.Printf("database1: %v, database2: %v", len(pb.database["0"]), len(args.Database["0"]))
-	// WRONG:
-	// pb.database = args.Database  // cannot do like that. this is not copy
-	for k,v := range args.Database {
-		pb.database[k] = v
-	}
-	for k,v := range args.HashVals {
-		pb.hashVals[k] = v
-	}
-	pb.rwm.Unlock()
+	pb.mu.Lock()
+	pb.database = args.Database
+	pb.hashVals = args.HashVals
+	pb.mu.Unlock()
 	return nil
 }
 
@@ -60,9 +48,7 @@ func (pb *PBServer) Bootstrapped(args *BootstrapArgs, reply *BootstrapReply) err
 // initiate by the Primary when bootstrapping new backup
 func (pb *PBServer) Bootstrapping(backup string) error {
 
-	pb.rwm.Lock()
 	args := &BootstrapArgs{pb.database, pb.hashVals}
-	pb.rwm.Unlock()
 	var reply BootstrapReply
 
 	ok := false
@@ -103,9 +89,10 @@ func (pb *PBServer) Forward(args *PutAppendArgs, reply *PutAppendReply) error {
 func (pb *PBServer) Get(args *GetArgs, reply *GetReply) error {
 
 	// Your code here.
-	pb.rwm.Lock()
+
+	pb.mu.Lock()
 	reply.Value = pb.database[args.Key]
-	pb.rwm.Unlock()
+	pb.mu.Unlock()
 	return nil
 }
 
@@ -113,7 +100,8 @@ func (pb *PBServer) Get(args *GetArgs, reply *GetReply) error {
 func (pb *PBServer) PutAppend(args *PutAppendArgs, reply *PutAppendReply) error {
 
 	// Your code here.
-	pb.rwm.Lock()
+
+	pb.mu.Lock()
 	if args.Op == "Put" {
 		pb.database[args.Key] = args.Value
 	} else if args.Op == "Append" {
@@ -127,35 +115,30 @@ func (pb *PBServer) PutAppend(args *PutAppendArgs, reply *PutAppendReply) error 
 			pb.hashVals[args.HashVal] = true
 		}
 	}
+	// defer statement defers the execution of a function until the surrounding function returns.
+	// to make sure that when I'm doing Forward for my backup, my own map will not be modified by others.
+	defer pb.mu.Unlock()
 
 	// quick check. as the backup will also call this PutAppend(). not just the primary.
-	if pb.isPrimaryInCache(pb.currview.Primary) {
+	if pb.isPrimaryInCache() {
 		args.Primary = pb.me
 
 		// IMPORTANT:
 		// only if the primary and the backup is `externally consistent`
 		// will the primary respond to the client, i.e., to make this change `externally visible`
-		var tmpBackup = pb.currview.Backup
-		ok := tmpBackup == "" // if there is no backup currently -> don't do Forward
+		ok := pb.currview.Backup == "" // if there is no backup currently -> don't do Forward
 
 		for ok == false {
-			//log.Printf("do forward %v->%v, val=%v", pb.me, pb.currview.Backup, args.Value)
 			ok = call(pb.currview.Backup, "PBServer.Forward", args, &reply)
-			//log.Printf("%v, do forward %v->%v, val=%v", ok, pb.me, pb.currview.Backup, args.Value)
 			//log.Printf("forward: %v", ok)
-			if ok == true {
-				break
-			} else {
+			if ok == false {
 				// there might be 3 cases:
 				newview, _ := pb.vs.Get()
-				//if newview.Primary != pb.me {
+				if newview.Primary != pb.me {
 					// 1. the primary is no longer the primary (split-brain)
-					// I found that this will not happen -> if it is not P, it MUST BE DEAD
-					//reply.Err = "PutAppend fails: I am no longer the primary. Sorry!"
-					//break
-				//} else
-				tmpBackup = newview.Backup
-				if tmpBackup == "" {
+					reply.Err = "PutAppend fails: I am no longer the primary. Sorry!"
+					break
+				} else if newview.Backup == "" {
 					reply.Err = "PutAppend fails: the backup not exists now. break."
 					break
 				} else {
@@ -168,7 +151,6 @@ func (pb *PBServer) PutAppend(args *PutAppendArgs, reply *PutAppendReply) error 
 			}
 		}
 	}
-	pb.rwm.Unlock()
 
 	return nil
 }
@@ -185,27 +167,24 @@ func (pb *PBServer) tick() {
 	// Your code here.
 	newview, _ := pb.vs.Ping(pb.currview.Viewnum)
 
-	if pb.isPrimaryInCache(newview.Primary) {
+	if pb.isPrimaryInCache() {
 		// case 1. {s1, _} -> {s1, s2} // s2 is the new backup
 		// case 2. {s1, s2} -> s2 dies -> {s1, s3} // s3 is the new backup
 		// note that in case 2, `b` will not be "" at that intermediate state since we called backupByIdleSrv()
 		// -> it was already replaced when primary got notified
-		log.Printf("%v is the new primary", newview.Primary)
+		//log.Printf("p=%v, b=%v, b'=%v", newview.Primary, newview.Backup, pb.currview.Backup)
 		if pb.currview.Backup != newview.Backup {
-
-			log.Printf("do bootstrap")
 			pb.Bootstrapping(newview.Backup)
 		}
 	}
 	pb.currview = &newview
-	log.Printf("me=%v, len=%v, n=%v, p=%v, b=%v", pb.me, len(pb.database["0"]), pb.currview.Viewnum, pb.currview.Primary, pb.currview.Backup)
 }
 
 // edited by Adrian
 // this PBServer regards itself as the primary according to its local cache
 // but of course, there is no promise that it IS the current primary
-func (pb *PBServer) isPrimaryInCache(primary string) bool {
-	return primary == pb.me
+func (pb *PBServer) isPrimaryInCache() bool {
+	return pb.currview.Primary == pb.me
 }
 
 // tell the server to shut itself down.
