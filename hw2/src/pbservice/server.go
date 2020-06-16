@@ -137,22 +137,7 @@ func (pb *PBServer) PutAppend(args *PutAppendArgs, reply *PutAppendReply) error 
 			ok = call(pb.currview.Backup, "PBServer.Forward", args, &reply)
 			//log.Printf("forward: %v", ok)
 			if ok == false {
-				// there might be 3 cases:
-				newview, _ := pb.vs.Get()
-				if newview.Primary != pb.me {
-					// 1. the primary is no longer the primary (split-brain)
-					reply.Err = "PutAppend fails: I am no longer the primary. Sorry!"
-					break
-				} else if newview.Backup == "" {
-					reply.Err = "PutAppend fails: the backup not exists now. break."
-					break
-				} else {
-					// 2. the backup is dead but the primary doesn't discover yet. {s1, s2} but is in fact {s1, _}
-					// it should be fine. The problem is bc of the backup, not the primary itself. -> retry later
-					// (wait for tick() to update the new backup)
-					// 3. the reason is the unreliable network between P & B. -> retry later.
-					time.Sleep(viewservice.PingInterval) // wait for the tick() to update view service's view
-				}
+				reply.Err = "Forward to Backup Failed."
 			}
 		}
 	}
