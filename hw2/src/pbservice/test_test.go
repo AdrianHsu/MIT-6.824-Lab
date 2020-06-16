@@ -429,7 +429,8 @@ func checkAppends(t *testing.T, v string, counts []int) {
 			wanted := "x " + strconv.Itoa(i) + " " + strconv.Itoa(j) + " y"
 			off := strings.Index(v, wanted)
 			if off < 0 {
-				t.Fatalf("missing element in Append result")
+				log.Printf("%v", v)
+				t.Fatalf("missing element %v in Append result", wanted)
 			}
 			off1 := strings.LastIndex(v, wanted)
 			if off1 != off {
@@ -842,6 +843,7 @@ func TestRepeatedCrashUnreliable(t *testing.T) {
 		for atomic.LoadInt32(&done) == 0 {
 			v := "x " + strconv.Itoa(i) + " " + strconv.Itoa(n) + " y"
 			ck.Append("0", v)
+			log.Printf("externally visible:%v", v)
 			// if no sleep here, then server tick() threads do not get
 			// enough time to Ping the viewserver.
 			time.Sleep(10 * time.Millisecond)
@@ -858,6 +860,7 @@ func TestRepeatedCrashUnreliable(t *testing.T) {
 	}
 
 	time.Sleep(20 * time.Second)
+	//time.Sleep(10 * time.Second)
 	atomic.StoreInt32(&done, 1)
 
 	fmt.Printf("  ... Appends done ... \n")
