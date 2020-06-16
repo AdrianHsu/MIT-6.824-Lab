@@ -429,7 +429,7 @@ func checkAppends(t *testing.T, v string, counts []int) {
 			wanted := "x " + strconv.Itoa(i) + " " + strconv.Itoa(j) + " y"
 			off := strings.Index(v, wanted)
 			if off < 0 {
-				t.Fatalf("missing element in Append result")
+				t.Fatalf("missing element %v in Append result", wanted)
 			}
 			off1 := strings.LastIndex(v, wanted)
 			if off1 != off {

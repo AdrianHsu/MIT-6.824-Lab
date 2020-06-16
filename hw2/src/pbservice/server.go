@@ -24,6 +24,7 @@ type PBServer struct {
 	// so we set up a clerk ptr to do Ping and some stuff.
 	vs         *viewservice.Clerk
 
+	rwm        sync.RWMutex
 
 	// Your declarations here.
 	currview *viewservice.View
@@ -37,10 +38,10 @@ type PBServer struct {
 // the new backup got bootstrapped.
 func (pb *PBServer) Bootstrapped(args *BootstrapArgs, reply *BootstrapReply) error {
 
-	pb.mu.Lock()
+	pb.rwm.Lock()
 	pb.database = args.Database
 	pb.hashVals = args.HashVals
-	pb.mu.Unlock()
+	pb.rwm.Unlock()
 	return nil
 }
 
@@ -90,9 +91,9 @@ func (pb *PBServer) Get(args *GetArgs, reply *GetReply) error {
 
 	// Your code here.
 
-	pb.mu.Lock()
+	pb.rwm.Lock()
 	reply.Value = pb.database[args.Key]
-	pb.mu.Unlock()
+	pb.rwm.Unlock()
 	return nil
 }
 
@@ -101,7 +102,7 @@ func (pb *PBServer) PutAppend(args *PutAppendArgs, reply *PutAppendReply) error 
 
 	// Your code here.
 
-	pb.mu.Lock()
+	pb.rwm.Lock()
 	if args.Op == "Put" {
 		pb.database[args.Key] = args.Value
 	} else if args.Op == "Append" {
@@ -117,10 +118,10 @@ func (pb *PBServer) PutAppend(args *PutAppendArgs, reply *PutAppendReply) error 
 	}
 	// defer statement defers the execution of a function until the surrounding function returns.
 	// to make sure that when I'm doing Forward for my backup, my own map will not be modified by others.
-	defer pb.mu.Unlock()
+	defer pb.rwm.Unlock()
 
 	// quick check. as the backup will also call this PutAppend(). not just the primary.
-	if pb.isPrimaryInCache() {
+	if pb.currview.Primary == pb.me {
 		args.Primary = pb.me
 
 		// IMPORTANT:
@@ -167,24 +168,18 @@ func (pb *PBServer) tick() {
 	// Your code here.
 	newview, _ := pb.vs.Ping(pb.currview.Viewnum)
 
-	if pb.isPrimaryInCache() {
-		// case 1. {s1, _} -> {s1, s2} // s2 is the new backup
-		// case 2. {s1, s2} -> s2 dies -> {s1, s3} // s3 is the new backup
+	if newview.Primary == pb.me {
+		// case 1. {s1, _} -> {s1, s2} // s2 is the new backup. s1 is me.
+		// case 2. {s1, s2} -> s2 dies -> {s1, s3} // s3 is the new backup. s1 is me.
 		// note that in case 2, `b` will not be "" at that intermediate state since we called backupByIdleSrv()
 		// -> it was already replaced when primary got notified
+		// case 3. {s1, s2} -> {s2, s3} // s3 is the new backup. s2 is me -> therefore we use newview.Primary
 		//log.Printf("p=%v, b=%v, b'=%v", newview.Primary, newview.Backup, pb.currview.Backup)
 		if pb.currview.Backup != newview.Backup {
 			pb.Bootstrapping(newview.Backup)
 		}
 	}
 	pb.currview = &newview
-}
-
-// edited by Adrian
-// this PBServer regards itself as the primary according to its local cache
-// but of course, there is no promise that it IS the current primary
-func (pb *PBServer) isPrimaryInCache() bool {
-	return pb.currview.Primary == pb.me
 }
 
 // tell the server to shut itself down.
