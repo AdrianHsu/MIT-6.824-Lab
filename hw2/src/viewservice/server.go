@@ -21,7 +21,9 @@ type ViewServer struct {
 	// Hint #2: add field(s) to ViewServer to keep track of the current view.
 	currview *View
 	recentHeard map[string] time.Time
-
+	//  A read/write mutex allows all the readers to access
+	// the map at the same time, but a writer will lock out everyone else.
+	rwm        sync.RWMutex
 	// Hint #3: keep track of whether the primary for the current view has acknowledged it
 	// keep track of whether the primary for the current view has acked the latest view X
 	// viewBound = 7 means that the current primary has acked the view 7. And the way
@@ -39,12 +41,12 @@ func (vs *ViewServer) Ping(args *PingArgs, reply *PingReply) error {
 	// Hint #1: you'll want to add field(s) to ViewServer in server.go
 	// in order to keep track of the most recent time at which
 	// the viewservice has heard a Ping from each server.
-	vs.mu.Lock()
+	vs.rwm.Lock()
 	// why do we need lock here?
 	// even though the test didn't specified, but we should know that Ping()
 	// can be called concurrently by many threads -> may cause concurrent writes on this map
 	vs.recentHeard[args.Me] = time.Now()
-	vs.mu.Unlock()
+	vs.rwm.Unlock()
 
 	if vs.currview == nil { // init, Ping(0) from ck1. only do this one time
 		vs.viewBound = args.Viewnum // X is now 0
@@ -179,6 +181,8 @@ func (vs *ViewServer) tick() {
 	// Hint #4: your viewservice needs to make periodic decisions,
 	// for example to promote the backup if the viewservice has missed
 	// DeadPings pings from the primary.
+	vs.rwm.Lock()
+	defer vs.rwm.Unlock()
 	for k, v := range vs.recentHeard {
 		// if current time time.Now() > (recentHeard time + some timeout)
 		// then we need to replace this server `k`

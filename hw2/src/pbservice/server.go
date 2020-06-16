@@ -129,17 +129,21 @@ func (pb *PBServer) PutAppend(args *PutAppendArgs, reply *PutAppendReply) error 
 		// p3: wait for tick() until it knows (p3, _) and solved
 
 		// the backup (at least it thought by itself) should reject a direct client request
-		return errors.New("I AM NOT THE PRIMARY YET")
+		return errors.New("ERROR: I AM NOT THE PRIMARY YET")
 	}
 
-	// Step 1. Update Backup if exists
+
 	pb.rwm.Lock()
+	// Step 1. Update Primary itself
+	pb.Update(args.Key, args.Value, args.Op, args.HashVal)
+
 	// defer statement defers the execution of a function until the surrounding function returns.
 	// to make sure that when I'm doing Forward for my backup, my own map will not be modified by others.
 	defer pb.rwm.Unlock()
 	sargs := PutAppendSyncArgs{args.Key, args.Value, args.Op, args.HashVal, pb.me}
 	sreply := PutAppendSyncReply{}
 
+	// Step 2. Update Backup if exists
 	// IMPORTANT:
 	// only if the primary and the backup is `externally consistent`
 	// will the primary respond to the client, i.e., to make this change `externally visible`
@@ -163,8 +167,6 @@ func (pb *PBServer) PutAppend(args *PutAppendArgs, reply *PutAppendReply) error 
 		}
 	}
 
-	// Step 2. Update Primary itself
-	pb.Update(args.Key, args.Value, args.Op, args.HashVal)
 	return nil
 }
 
@@ -192,8 +194,9 @@ func (pb *PBServer) tick() {
 
 	// Your code here.
 	newview, _ := pb.vs.Ping(pb.currview.Viewnum)
-	log.Printf("v=%v, p=%v, b=%v", newview.Viewnum, newview.Primary, newview.Backup)
+	//log.Printf("v=%v, p=%v, b=%v", newview.Viewnum, newview.Primary, newview.Backup)
 	pb.checkNewBackup(newview)
+
 	pb.currview = &newview
 }
 
