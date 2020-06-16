@@ -122,7 +122,7 @@ func (pb *PBServer) PutAppend(args *PutAppendArgs, reply *PutAppendReply) error 
 	}
 	// defer statement defers the execution of a function until the surrounding function returns.
 	// to make sure that when I'm doing Forward for my backup, my own map will not be modified by others.
-	defer pb.rwm.Unlock()
+	pb.rwm.Unlock()
 
 	// quick check. as the backup will also call this PutAppend(). not just the primary.
 	if pb.currview.Primary == pb.me {
