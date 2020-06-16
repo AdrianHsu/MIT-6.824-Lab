@@ -105,6 +105,7 @@ func (pb *PBServer) Forward(sargs *PutAppendSyncArgs, sreply *PutAppendSyncReply
 	pb.rwm.Lock()
 	// defer statement defers the execution of a function until the surrounding function returns.
 	// to make sure that when I'm doing Forward for my backup, my own map will not be modified by others.
+	// Update() is included by `defer`
 	defer pb.rwm.Unlock()
 
 	if sargs.Primary != pb.currview.Primary {
@@ -121,6 +122,12 @@ func (pb *PBServer) Forward(sargs *PutAppendSyncArgs, sreply *PutAppendSyncReply
 func (pb *PBServer) PutAppend(args *PutAppendArgs, reply *PutAppendReply) error {
 
 	// Your code here.
+	pb.rwm.Lock()
+	// defer statement defers the execution of a function until the surrounding function returns.
+	// to make sure that when I'm doing Forward for my backup, my own map will not be modified by others.
+	// Update() is included by `defer`
+	defer pb.rwm.Unlock()
+
 	if pb.me != pb.currview.Primary {
 		reply.Err = "PutAppend: NOT THE PRIMARY YET"
 		// e.g., (p1, p3) -> (p3, _)
@@ -133,13 +140,10 @@ func (pb *PBServer) PutAppend(args *PutAppendArgs, reply *PutAppendReply) error 
 	}
 
 
-	pb.rwm.Lock()
+
 	// Step 1. Update Primary itself
 	pb.Update(args.Key, args.Value, args.Op, args.HashVal)
 
-	// defer statement defers the execution of a function until the surrounding function returns.
-	// to make sure that when I'm doing Forward for my backup, my own map will not be modified by others.
-	defer pb.rwm.Unlock()
 	sargs := PutAppendSyncArgs{args.Key, args.Value, args.Op, args.HashVal, pb.me}
 	sreply := PutAppendSyncReply{}
 
@@ -151,6 +155,7 @@ func (pb *PBServer) PutAppend(args *PutAppendArgs, reply *PutAppendReply) error 
 
 	for ok == false {
 		ok = call(pb.currview.Backup, "PBServer.Forward", sargs, &sreply)
+		//log.Printf("%v", ok)
 		if ok == true {
 			// everything works fine
 			break
@@ -162,7 +167,13 @@ func (pb *PBServer) PutAppend(args *PutAppendArgs, reply *PutAppendReply) error 
 			}
 			time.Sleep(viewservice.PingInterval)
 			// case 2. check if the backup was still alive
-			pb.tick() // do tick() by force
+
+			// exactly the same as tick() But cannot call it directly as we will acquire lock twice
+			newview, _ := pb.vs.Ping(pb.currview.Viewnum)
+			//log.Printf("v=%v, p=%v, b=%v", newview.Viewnum, newview.Primary, newview.Backup)
+			pb.checkNewBackup(newview)
+			pb.changeView(newview)
+
 			ok = pb.currview.Backup == ""
 		}
 	}
@@ -184,6 +195,9 @@ func (pb *PBServer) checkNewBackup(newview viewservice.View) {
 	}
 }
 
+func (pb* PBServer) changeView(newview viewservice.View) {
+	pb.currview = &newview
+}
 //
 // ping the viewserver periodically.
 // if view changed:
@@ -193,11 +207,12 @@ func (pb *PBServer) checkNewBackup(newview viewservice.View) {
 func (pb *PBServer) tick() {
 
 	// Your code here.
+	pb.rwm.Lock()
+	defer pb.rwm.Unlock()
 	newview, _ := pb.vs.Ping(pb.currview.Viewnum)
 	//log.Printf("v=%v, p=%v, b=%v", newview.Viewnum, newview.Primary, newview.Backup)
 	pb.checkNewBackup(newview)
-
-	pb.currview = &newview
+	pb.changeView(newview)
 }
 
 // tell the server to shut itself down.

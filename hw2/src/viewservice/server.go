@@ -41,12 +41,14 @@ func (vs *ViewServer) Ping(args *PingArgs, reply *PingReply) error {
 	// Hint #1: you'll want to add field(s) to ViewServer in server.go
 	// in order to keep track of the most recent time at which
 	// the viewservice has heard a Ping from each server.
+
 	vs.rwm.Lock()
+	defer vs.rwm.Unlock()
+
 	// why do we need lock here?
 	// even though the test didn't specified, but we should know that Ping()
 	// can be called concurrently by many threads -> may cause concurrent writes on this map
 	vs.recentHeard[args.Me] = time.Now()
-	vs.rwm.Unlock()
 
 	if vs.currview == nil { // init, Ping(0) from ck1. only do this one time
 		vs.viewBound = args.Viewnum // X is now 0
@@ -89,6 +91,9 @@ func (vs *ViewServer) Ping(args *PingArgs, reply *PingReply) error {
 func (vs *ViewServer) Get(args *GetArgs, reply *GetReply) error {
 
 	// Your code here.
+	vs.rwm.Lock()
+	defer vs.rwm.Unlock()
+
 	if vs.currview != nil {
 		reply.View = *vs.currview
 	}
