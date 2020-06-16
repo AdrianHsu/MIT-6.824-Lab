@@ -110,8 +110,8 @@ func (pb *PBServer) Forward(sargs *PutAppendSyncArgs, sreply *PutAppendSyncReply
 	if sargs.Primary != pb.currview.Primary {
 		// the backup first need to check if the primary is still the current primary
 		// the caller is not primary anymore
-		sreply.Err = "ERROR: NOT CURRENT PRIMARY"
-		return errors.New("ERROR: NOT CURRENT PRIMARY")
+		sreply.Err = "ForwardTest: NOT CURRENT PRIMARY"
+		return errors.New("ForwardTest: NOT CURRENT PRIMARY")
 	} else {
 		pb.Update(sargs.Key, sargs.Value, sargs.Op, sargs.HashVal)
 	}
@@ -122,14 +122,14 @@ func (pb *PBServer) PutAppend(args *PutAppendArgs, reply *PutAppendReply) error 
 
 	// Your code here.
 	if pb.me != pb.currview.Primary {
-		reply.Err = "I'm not the primary according to my cache"
+		reply.Err = "PutAppend: NOT THE PRIMARY YET"
 		// e.g., (p1, p3) -> (p3, _)
 		// client: already know that p3 is now the new primary
 		// p3: according to its cache, it still think (p1, p3) -> still dont think it is the primary
 		// p3: wait for tick() until it knows (p3, _) and solved
 
 		// the backup (at least it thought by itself) should reject a direct client request
-		return errors.New("ERROR: I AM NOT THE PRIMARY YET")
+		return errors.New("PutAppend: NOT THE PRIMARY YET")
 	}
 
 
@@ -156,9 +156,9 @@ func (pb *PBServer) PutAppend(args *PutAppendArgs, reply *PutAppendReply) error 
 			break
 		} else {
 			// case 1. you are no longer the primary
-			if sreply.Err == "ERROR: NOT CURRENT PRIMARY" {
+			if sreply.Err == "ForwardTest: NOT CURRENT PRIMARY" {
 				reply.Err = sreply.Err
-				return errors.New("ERROR: NOT CURRENT PRIMARY") // don't need to update anymore
+				return errors.New("PutAppendTest: NOT CURRENT PRIMARY") // don't need to update anymore
 			}
 			time.Sleep(viewservice.PingInterval)
 			// case 2. check if the backup was still alive
@@ -179,7 +179,7 @@ func (pb *PBServer) checkNewBackup(newview viewservice.View) {
 		// note that in case 2, `b` will not be "" at that intermediate state since we called backupByIdleSrv()
 		// -> it was already replaced when primary got notified
 		// case 3. {s1, s2} -> {s2, s3} // s3 is the new backup. s2 is me -> therefore we use newview.Primary
-		log.Printf("%v do bootstrapping: %v", pb.me, newview.Backup)
+		//log.Printf("%v do bootstrapping: %v", pb.me, newview.Backup)
 		pb.Bootstrapping(newview.Backup)
 	}
 }
