@@ -24,10 +24,10 @@ type ViewServer struct {
 	//  A read/write mutex allows all the readers to access
 	// the map at the same time, but a writer will lock out everyone else.
 	rwm        sync.RWMutex
-	// Hint #3: keep track of whether the primary for the current view has acknowledged it
+	// Hint #3:
 	// keep track of whether the primary for the current view has acked the latest view X
-	// viewBound = 7 means that the current primary has acked the view 7. And the way
-	// it did the ACK is by sending an Ping(7)
+	// viewBound = 7 means that the current primary has acked the view 7. **And the way
+	// it did the ACK is by sending an Ping(7)**
 	viewBound uint // last value view X of the primary Ping(X)
 	idleServers map[string] bool
 }
@@ -38,28 +38,33 @@ type ViewServer struct {
 func (vs *ViewServer) Ping(args *PingArgs, reply *PingReply) error {
 
 	// Your code here.
-	// Hint #1: you'll want to add field(s) to ViewServer in server.go
-	// in order to keep track of the most recent time at which
-	// the viewservice has heard a Ping from each server.
-
-	vs.rwm.Lock()
-	defer vs.rwm.Unlock()
 
 	// why do we need lock here?
 	// even though the test didn't specified, but we should know that Ping()
-	// can be called concurrently by many threads -> may cause concurrent writes on this map
+	// can be called concurrently by many threads -> may cause concurrent writes on `recentHeard`
+	vs.rwm.Lock()
+	defer vs.rwm.Unlock()
+
+	// Hint #1: you'll want to add field(s) to ViewServer in server.go
+	// in order to keep track of the most recent time at which
+	// the viewservice has heard a Ping from each server.
 	vs.recentHeard[args.Me] = time.Now()
 
-	if vs.currview == nil { // init, Ping(0) from ck1. only do this one time
+	// init, Ping(0) from ck1. only do this one time when vs get bootstrapped
+	if vs.currview == nil {
 		vs.viewBound = args.Viewnum // X is now 0
 		vs.currview = &View{0, "", ""}
 		// ps. as it now received a Ping(0) from primary => can proceed to Viewnum = 1
 	}
 
 	if args.Me == vs.currview.Primary {
+		// deal with the ACK from the primary
 		// if the incoming Ping(X'): its X' is larger than our view bound X
 		// e.g., in the test case #2: Ping(1) from ck1: then 0 < 1
 		// received a Ping(1) from the primary ck1 => can later proceed to Viewnum = 2
+
+		// viewBound increases means that some new view was ack-ed by the primary
+		// and the vs realized that now
 		if vs.viewBound < args.Viewnum {
 			vs.viewBound = args.Viewnum
 		}
@@ -68,7 +73,7 @@ func (vs *ViewServer) Ping(args *PingArgs, reply *PingReply) error {
 		// Therefore, we set that when a server re-starts after a crash,
 		// it should send one or more Pings with an argument of zero to
 		// inform the view service that it crashed.
-		if args.Viewnum == 0 { // just got crashed and restarted
+		if args.Viewnum == 0 {
 			vs.replace(args.Me) // force replace
 		}
 	} else if args.Me == vs.currview.Backup {
@@ -77,7 +82,7 @@ func (vs *ViewServer) Ping(args *PingArgs, reply *PingReply) error {
 			vs.replace(args.Me) // force replace
 		}
 	} else {
-		// an idle server comes in.
+		// an idle server comes in. put into the waitlist
 		vs.assignRole(args.Me)
 	}
 
@@ -91,6 +96,8 @@ func (vs *ViewServer) Ping(args *PingArgs, reply *PingReply) error {
 func (vs *ViewServer) Get(args *GetArgs, reply *GetReply) error {
 
 	// Your code here.
+	// the clerk can ask for the latest view from the view service
+	// without doing Ping(). it uses Get() to fetch the latest view.
 	vs.rwm.Lock()
 	defer vs.rwm.Unlock()
 
@@ -101,9 +108,11 @@ func (vs *ViewServer) Get(args *GetArgs, reply *GetReply) error {
 }
 
 // edited by Adrian
+// backed up by idle server
 func (vs *ViewServer) backupByIdleSrv() {
 	// only when idleServers exists will the backup be filled in
 	if len(vs.idleServers) > 0 {
+		// pick either one of them
 		for key, _ := range vs.idleServers {
 			vs.currview.Backup = key // backup will be set
 			delete(vs.idleServers, key) // to keep the size of map
@@ -132,6 +141,8 @@ func (vs *ViewServer) replace(k string) {
 	// the vs CANNOT proceed from view 7 to view 8 as it has not received a Ping(7)
 	// from the primary of the view X. the current viewBound is still 7
 	// see testcase: `Viewserver waits for primary to ack view`
+	// if the current viewnum is 7
+	// 6 + 1 > 7? NO! so you cannot proceed. skip this function.
 	if vs.viewBound + 1 > vs.currview.Viewnum {
 
 		if k == vs.currview.Primary {

@@ -114,6 +114,7 @@ func (pb *PBServer) Forward(sargs *PutAppendSyncArgs, sreply *PutAppendSyncReply
 	return nil
 }
 
+// edited by Adrian
 func (pb *PBServer) Update(key string, value string, op string, hashVal int64) {
 
 	// no need to do lock.
