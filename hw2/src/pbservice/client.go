@@ -29,7 +29,7 @@ func MakeClerk(vshost string, me string) *Clerk {
 	ck := new(Clerk)
 	ck.vs = viewservice.MakeClerk(me, vshost)
 	// Your ck.* initializations here
-	ck.currPrimary = ""
+	ck.currPrimary = "" // initially, the current primary stored in cache is none
 
 	return ck
 }
@@ -78,25 +78,33 @@ func call(srv string, rpcname string,
 //
 func (ck *Clerk) Get(key string) string {
 
-
 	// Your code here.
-	// if the current view has no primary, keep asking vs until a primary shows up
+	// if the current view has no primary, keep asking the view service until a primary showed up
 	for ck.currPrimary == "" {
 		view, _ := ck.vs.Get()
 		ck.currPrimary = view.Primary
 	}
+	// might need to set up lock for client. but as it passed all testcases so I ignored that
 
 	args := &GetArgs{key}
 	var reply GetReply
+
 	ok := false
+	// clients keep re-trying until they get an answer.
 	for ok == false {
 		//log.Printf("%v start %v", ck.currPrimary, args.Key)
 		ok := call(ck.currPrimary, "PBServer.Get", args, &reply)
 		//log.Printf("%v end %v", ck.currPrimary, args.Key)
 		if ok {
+			// everything works fine
 			break
 		} else {
-			// if the current primary is dead OR it doesn't think itself as the primary
+			// case 1. if the current primary is dead
+			// case 2. the network is unavailable temporarily
+			// case 3. if the asked primary doesn't think itself as the primary
+			// (ps. case 3 will show an error:  NOT THE PRIMARY YET)
+
+			// do the update view manually
 			time.Sleep(viewservice.PingInterval)
 			view, _ := ck.vs.Get()
 			ck.currPrimary = view.Primary
@@ -111,7 +119,6 @@ func (ck *Clerk) Get(key string) string {
 func (ck *Clerk) PutAppend(key string, value string, op string) {
 
 	// Your code here.
-	// if the current view has no primary, keep asking vs until a primary shows up
 	for ck.currPrimary == "" {
 		view, _ := ck.vs.Get()
 		ck.currPrimary = view.Primary
@@ -122,18 +129,14 @@ func (ck *Clerk) PutAppend(key string, value string, op string) {
 	var reply PutAppendReply
 
 	ok := false
-	// clients keep re-trying until they get an answer.
 	for ok == false {
 		//log.Printf("%v", ck.currPrimary)
 		ok := call(ck.currPrimary, "PBServer.PutAppend", args, &reply)
 		//log.Printf("%v, %v", ok, ck.currPrimary)
-
 		if ok {
 			// everything works fine
 			break
 		} else {
-			// network failed. retry
-			// OR if the current primary is dead
 			time.Sleep(viewservice.PingInterval)
 			view, _ := ck.vs.Get()
 			ck.currPrimary = view.Primary

@@ -23,19 +23,18 @@ type PBServer struct {
 	dead       int32 // for testing
 	unreliable int32 // for testing
 	me         string
-	// To the vs, this PBServer is acting like a clerk.
-	// so we set up a clerk ptr to do Ping and some stuff.
+	// To the view service, this PBServer is acting like a clerk.
+	// so we set up a clerk pointer to do Ping and some other stuff.
 	vs         *viewservice.Clerk
-	//  A read/write mutex allows all the readers to access
-	// the map at the same time, but a writer will lock out everyone else.
-	rwm        sync.RWMutex
 
 	// Your declarations here.
 	currview *viewservice.View
 	database map[string]string
 	// hashVals acts as the state to filter duplicates
 	hashVals map[int64]bool
-
+	// A read/write mutex allows all the readers to access
+	// the map at the same time, but a writer will lock out everyone else.
+	rwm        sync.RWMutex
 }
 
 // edited by Adrian
@@ -54,7 +53,9 @@ func (pb *PBServer) Bootstrapped(args *BootstrapArgs, reply *BootstrapReply) err
 }
 
 // edited by Adrian
-// initiate by the Primary when bootstrapping new backup
+// initiate by the primary when it found that it's time to bootstrap the new backup
+// since that the current view has not yet changed. so we cannot use `pb.currview.Backup`
+// instead, we pass in a backup param
 func (pb *PBServer) Bootstrapping(backup string) error {
 
 	args := &BootstrapArgs{pb.database, pb.hashVals}
@@ -62,17 +63,20 @@ func (pb *PBServer) Bootstrapping(backup string) error {
 
 	ok := false
 	for ok == false {
-		//log.Printf("%v, %v", pb.me, backup)
 		ok = call(backup, "PBServer.Bootstrapped", args, &reply)
 		if ok {
 			break
 		} else {
+			// network failure
 			time.Sleep(viewservice.PingInterval)
 		}
 	}
 	return nil
 }
 
+// edited by Adrian
+// to leverage determinism of the state machine
+// the backup got a Get request forwarded by the primary
 func (pb *PBServer) ForwardGet(sargs *GetSyncArgs, sreply *GetSyncReply) error {
 
 	pb.rwm.Lock()
@@ -80,76 +84,40 @@ func (pb *PBServer) ForwardGet(sargs *GetSyncArgs, sreply *GetSyncReply) error {
 
 	if sargs.Primary != pb.currview.Primary {
 		// the backup first need to check if the primary is still the current primary
-		// the caller is not primary anymore
+		// e.g. split-brain: {s1, s3} -> s1 dies -> {s3, s2} -> s1 revokes
+		// -> s1 still receives some requests from client -> so s1 forward to its cache backup, s3
+		// -> s3 will tell s1 that "you are no longer the current primary now"
+		// -> so finally s1 will reject the client's request
 		sreply.Err = "ForwardTest: SENDER IS NOT CURRENT PRIMARY"
 		return errors.New("ForwardTest: SENDER IS NOT CURRENT PRIMARY")
 	} else {
+		// if it is the primary, then we do Get normally
 		sreply.Value = pb.database[sargs.Key]
-		//log.Printf("backup: %v", sreply.Value)
 	}
 	return nil
 }
+// edited by Adrian
+// to leverage determinism of the state machine
+// forward any state necessary for backup to `mimic` the execution
+// do exactly the same PutAppend request on the backup
+func (pb *PBServer) Forward(sargs *PutAppendSyncArgs, sreply *PutAppendSyncReply) error {
 
-func (pb *PBServer) Get(args *GetArgs, reply *GetReply) error {
-
-	// Your code here.
 	pb.rwm.Lock()
 	defer pb.rwm.Unlock()
-	if pb.me != pb.currview.Primary {
-		reply.Err = "Get: NOT THE PRIMARY YET"
-		// e.g., (p1, p3) -> (p3, _)
-		// client: already know that p3 is now the new primary
-		// p3: according to its cache, it still think (p1, p3) -> still dont think it is the primary
-		// p3: wait for tick() until it knows (p3, _) and solved
 
-		// the backup (at least it thought by itself) should reject a direct client request
-		return errors.New("GetTest: NOT THE PRIMARY YET")
+	if sargs.Primary != pb.currview.Primary {
+		sreply.Err = "ForwardTest: SENDER IS NOT CURRENT PRIMARY"
+		return errors.New("ForwardTest: SENDER IS NOT CURRENT PRIMARY")
+	} else {
+		pb.Update(sargs.Key, sargs.Value, sargs.Op, sargs.HashVal)
 	}
-
-
-	reply.Value = pb.database[args.Key]
-
-	sargs := GetSyncArgs{args.Key,pb.me}
-	sreply := GetSyncReply{}
-
-	ok := pb.currview.Backup == ""
-
-	for ok == false {
-		//log.Printf("b get %v, %v, %v", pb.me, pb.currview.Backup, sargs.Key)
-		ok = call(pb.currview.Backup, "PBServer.ForwardGet", sargs, &sreply)
-		//log.Printf("get %v, %v, %v", pb.me, pb.currview.Backup, sargs.Key)
-		if ok == true {
-			// everything works well
-			if sreply.Value != reply.Value {
-				reply.Err = "GetTest: VALUE MISMATCH"
-				return errors.New("GetTest: VALUE MISMATCH") // don't need to update anymore
-			}
-			break
-		} else {
-			// case 1. you are no longer the primary
-			if sreply.Err == "ForwardTest: SENDER IS NOT CURRENT PRIMARY" {
-				reply.Err = sreply.Err
-				return errors.New("GetTest: SENDER IS NOT CURRENT PRIMARY") // don't need to update anymore
- 			}
-
-			time.Sleep(viewservice.PingInterval)
-			// case 2. check if the backup was still alive
-
-			// perform exactly the same as tick() But cannot call it directly as we will acquire lock twice
-			newview, _ := pb.vs.Ping(pb.currview.Viewnum)
-			//log.Printf("v=%v, p=%v, b=%v", newview.Viewnum, newview.Primary, newview.Backup)
-			pb.checkNewBackup(newview)
-			pb.changeView(newview)
-
-			ok = pb.currview.Backup == ""
-		}
-	}
-
 	return nil
 }
 
 func (pb *PBServer) Update(key string, value string, op string, hashVal int64) {
 
+	// no need to do lock.
+	// Update() must be called by Forward() or PutAppend() and they both did acquire the lock
 	if op == "Put" {
 		pb.database[key] = value
 	} else if op == "Append" {
@@ -163,22 +131,60 @@ func (pb *PBServer) Update(key string, value string, op string, hashVal int64) {
 	}
 }
 
-// edited by Adrian
-// to leverage determinism of the state machine
-// forward any state necessary for backup to `mimic` the execution
-func (pb *PBServer) Forward(sargs *PutAppendSyncArgs, sreply *PutAppendSyncReply) error {
+func (pb *PBServer) Get(args *GetArgs, reply *GetReply) error {
 
+	// Your code here.
 	pb.rwm.Lock()
 	defer pb.rwm.Unlock()
 
-	if sargs.Primary != pb.currview.Primary {
-		// the backup first need to check if the primary is still the current primary
-		// the caller is not primary anymore
-		sreply.Err = "ForwardTest: SENDER IS NOT CURRENT PRIMARY"
-		return errors.New("ForwardTest: SENDER IS NOT CURRENT PRIMARY")
-	} else {
-		pb.Update(sargs.Key, sargs.Value, sargs.Op, sargs.HashVal)
+	if pb.me != pb.currview.Primary {
+		reply.Err = "Get: NOT THE PRIMARY YET"
+		// it might be possible that the primary dies and then the backup still not yet
+		// realizes that it is now the new primary (the `p3`).
+
+		// e.g., (p1, p3) -> (p3, _)
+		// client: already know that p3 is now the new primary
+		// p3: according to its cache, it still think (p1, p3) -> still dont think it is the primary
+		// so it will return an error the client and tell it to try later
+		// -> wait for tick() until it knows (p3, _) and problem solved
+
+		// the backup (at least it thought by itself) should reject a direct client request
+		return errors.New("GetTest: NOT THE PRIMARY YET")
 	}
+
+	reply.Value = pb.database[args.Key]
+
+	sargs := GetSyncArgs{args.Key,pb.me}
+	sreply := GetSyncReply{}
+
+	// if there is no backup currently -> don't do Forward
+	ok := pb.currview.Backup == ""
+
+	for ok == false {
+		//log.Printf("b get %v, %v, %v", pb.me, pb.currview.Backup, sargs.Key)
+		ok = call(pb.currview.Backup, "PBServer.ForwardGet", sargs, &sreply)
+		//log.Printf("get %v, %v, %v", pb.me, pb.currview.Backup, sargs.Key)
+		if ok == true {
+			// everything works well
+			break
+		} else {
+			// case 1. you are no longer the primary
+			if sreply.Err == "ForwardTest: SENDER IS NOT CURRENT PRIMARY" {
+				reply.Err = sreply.Err
+				return errors.New("GetTest: SENDER IS NOT CURRENT PRIMARY") // don't need to update anymore
+			}
+
+			time.Sleep(viewservice.PingInterval)
+			// case 2. check if the backup was still alive
+			// perform exactly the same as tick(). Cannot call it directly as we will acquire lock twice
+			newview, _ := pb.vs.Ping(pb.currview.Viewnum)
+			pb.checkNewBackup(newview)
+			pb.changeView(newview)
+
+			ok = pb.currview.Backup == ""
+		}
+	}
+
 	return nil
 }
 
@@ -190,26 +196,21 @@ func (pb *PBServer) PutAppend(args *PutAppendArgs, reply *PutAppendReply) error 
 
 	if pb.me != pb.currview.Primary {
 		reply.Err = "PutAppend: NOT THE PRIMARY YET"
-		// e.g., (p1, p3) -> (p3, _)
-		// client: already know that p3 is now the new primary
-		// p3: according to its cache, it still think (p1, p3) -> still dont think it is the primary
-		// p3: wait for tick() until it knows (p3, _) and solved
-
-		// the backup (at least it thought by itself) should reject a direct client request
-		return errors.New("PutAppend: NOT THE PRIMARY YET")
+		return errors.New("PutAppendTest: NOT THE PRIMARY YET")
 	}
 
-	// Step 1. Update Primary itself
+	// Step 1. Update the primary itself (note: should not update the backup first!)
 	pb.Update(args.Key, args.Value, args.Op, args.HashVal)
 
 	sargs := PutAppendSyncArgs{args.Key, args.Value, args.Op, args.HashVal, pb.me}
 	sreply := PutAppendSyncReply{}
 
-	// Step 2. Update Backup if exists
+	// Step 2. Update the backup (if exists)
+
 	// IMPORTANT:
 	// only if the primary and the backup is `externally consistent`
 	// will the primary respond to the client, i.e., to make this change `externally visible`
-	ok := pb.currview.Backup == "" // if there is no backup currently -> don't do Forward
+	ok := pb.currview.Backup == ""
 
 	for ok == false {
 		//log.Printf("b put %v, %v, %v", pb.me, pb.currview.Backup, sargs.Key)
@@ -227,10 +228,8 @@ func (pb *PBServer) PutAppend(args *PutAppendArgs, reply *PutAppendReply) error 
 
 			time.Sleep(viewservice.PingInterval)
 			// case 2. check if the backup was still alive
-
-			// perform exactly the same as tick() But cannot call it directly as we will acquire lock twice
+			// perform exactly the same as tick(). Cannot call it directly as we will acquire lock twice
 			newview, _ := pb.vs.Ping(pb.currview.Viewnum)
-			//log.Printf("v=%v, p=%v, b=%v", newview.Viewnum, newview.Primary, newview.Backup)
 			pb.checkNewBackup(newview)
 			pb.changeView(newview)
 
@@ -241,23 +240,28 @@ func (pb *PBServer) PutAppend(args *PutAppendArgs, reply *PutAppendReply) error 
 	return nil
 }
 
-
+// edited by Adrian
+// to detect if the backup has changed
 func (pb *PBServer) checkNewBackup(newview viewservice.View) {
 
+	// case 1. {s1, _} -> {s1, s2} // s2 is the new backup. s1 is myself.
+	// case 2. {s1, s2} -> s2 dies -> {s1, s3} // s3 is the new backup. s1 is myself.
+	// note that in case 2, `b` will not be "" in that intermediate state since we called backupByIdleSrv()
+	// -> it was already replaced when the primary got notified
+
+	// case 3. {s1, s2} -> {s2, s3} // s3 is the new backup. s2 is me
+	// -> therefore we use newview.Primary (s2) to do the bootstrap but not the pb.currview.Primary (s1)
 	if newview.Primary == pb.me && pb.currview.Backup != newview.Backup && newview.Backup != "" {
-		// case 1. {s1, _} -> {s1, s2} // s2 is the new backup. s1 is me.
-		// case 2. {s1, s2} -> s2 dies -> {s1, s3} // s3 is the new backup. s1 is me.
-		// note that in case 2, `b` will not be "" at that intermediate state since we called backupByIdleSrv()
-		// -> it was already replaced when primary got notified
-		// case 3. {s1, s2} -> {s2, s3} // s3 is the new backup. s2 is me -> therefore we use newview.Primary
-		//log.Printf("%v do bootstrapping: %v", pb.me, newview.Backup)
 		pb.Bootstrapping(newview.Backup)
 	}
 }
 
 func (pb* PBServer) changeView(newview viewservice.View) {
+	// no need to lock
+	// the caller should already acquired a lock
 	pb.currview = &newview
 }
+
 //
 // ping the viewserver periodically.
 // if view changed:
@@ -269,6 +273,7 @@ func (pb *PBServer) tick() {
 	// Your code here.
 	pb.rwm.Lock()
 	defer pb.rwm.Unlock()
+
 	newview, _ := pb.vs.Ping(pb.currview.Viewnum)
 	//log.Printf("me=%v, v=%v, p=%v, b=%v", pb.me, newview.Viewnum, newview.Primary, newview.Backup)
 	pb.checkNewBackup(newview)

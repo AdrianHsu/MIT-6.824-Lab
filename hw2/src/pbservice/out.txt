@@ -21,8 +21,6 @@ Test: Concurrent Append()s to the same key ...
 Test: Concurrent Put()s to the same key; unreliable ...
   ... Passed
 Test: Repeated failures/restarts ...
-ForwardTest: SENDER IS NOT CURRENT PRIMARY
-ForwardTest: SENDER IS NOT CURRENT PRIMARY
   ... Put/Gets done ... 
   ... Passed
 Test: Repeated failures/restarts with concurrent updates to same key; unreliable ...
@@ -36,7 +34,7 @@ Test: Partitioned old primary does not complete Gets ...
 GetTest: NOT THE PRIMARY YET
   ... Passed
 PASS
-ok  	pbservice	111.472s
+ok  	pbservice	112.000s
 Test: Single primary, no backup ...
   ... Passed
 Test: Add a backup ...
@@ -63,8 +61,6 @@ Test: Repeated failures/restarts ...
 ForwardTest: SENDER IS NOT CURRENT PRIMARY
 GetTest: NOT THE PRIMARY YET
 GetTest: NOT THE PRIMARY YET
-GetTest: NOT THE PRIMARY YET
-GetTest: NOT THE PRIMARY YET
   ... Put/Gets done ... 
   ... Passed
 Test: Repeated failures/restarts with concurrent updates to same key; unreliable ...
@@ -78,7 +74,84 @@ Test: Partitioned old primary does not complete Gets ...
 GetTest: NOT THE PRIMARY YET
   ... Passed
 PASS
-ok  	pbservice	111.566s
+ok  	pbservice	111.366s
+Test: Single primary, no backup ...
+  ... Passed
+Test: Add a backup ...
+  ... Passed
+Test: Count RPCs to viewserver ...
+  ... Passed
+Test: Primary failure ...
+  ... Passed
+Test: Kill last server, new one should not be active ...
+  ... Passed
+Test: at-most-once Append; unreliable ...
+  ... Passed
+Test: Put() immediately after backup failure ...
+  ... Passed
+Test: Put() immediately after primary failure ...
+  ... Passed
+Test: Concurrent Put()s to the same key ...
+  ... Passed
+Test: Concurrent Append()s to the same key ...
+  ... Passed
+Test: Concurrent Put()s to the same key; unreliable ...
+  ... Passed
+Test: Repeated failures/restarts ...
+  ... Put/Gets done ... 
+  ... Passed
+Test: Repeated failures/restarts with concurrent updates to same key; unreliable ...
+  ... Appends done ... 
+  ... Passed
+Test: Old primary does not serve Gets ...
+GetTest: NOT THE PRIMARY YET
+  ... Passed
+Test: Partitioned old primary does not complete Gets ...
+GetTest: NOT THE PRIMARY YET
+  ... Passed
+PASS
+ok  	pbservice	111.711s
+Test: Single primary, no backup ...
+  ... Passed
+Test: Add a backup ...
+  ... Passed
+Test: Count RPCs to viewserver ...
+  ... Passed
+Test: Primary failure ...
+  ... Passed
+Test: Kill last server, new one should not be active ...
+  ... Passed
+Test: at-most-once Append; unreliable ...
+  ... Passed
+Test: Put() immediately after backup failure ...
+  ... Passed
+Test: Put() immediately after primary failure ...
+  ... Passed
+Test: Concurrent Put()s to the same key ...
+  ... Passed
+Test: Concurrent Append()s to the same key ...
+  ... Passed
+Test: Concurrent Put()s to the same key; unreliable ...
+  ... Passed
+Test: Repeated failures/restarts ...
+GetTest: NOT THE PRIMARY YET
+GetTest: NOT THE PRIMARY YET
+GetTest: NOT THE PRIMARY YET
+  ... Put/Gets done ... 
+  ... Passed
+Test: Repeated failures/restarts with concurrent updates to same key; unreliable ...
+ForwardTest: SENDER IS NOT CURRENT PRIMARY
+ForwardTest: SENDER IS NOT CURRENT PRIMARY
+  ... Appends done ... 
+  ... Passed
+Test: Old primary does not serve Gets ...
+GetTest: NOT THE PRIMARY YET
+  ... Passed
+Test: Partitioned old primary does not complete Gets ...
+GetTest: NOT THE PRIMARY YET
+  ... Passed
+PASS
+ok  	pbservice	111.153s
 Test: Single primary, no backup ...
   ... Passed
 Test: Add a backup ...
@@ -105,13 +178,12 @@ Test: Repeated failures/restarts ...
 ForwardTest: SENDER IS NOT CURRENT PRIMARY
 GetTest: NOT THE PRIMARY YET
 GetTest: NOT THE PRIMARY YET
+ForwardTest: SENDER IS NOT CURRENT PRIMARY
 GetTest: NOT THE PRIMARY YET
 GetTest: NOT THE PRIMARY YET
   ... Put/Gets done ... 
   ... Passed
 Test: Repeated failures/restarts with concurrent updates to same key; unreliable ...
-ForwardTest: SENDER IS NOT CURRENT PRIMARY
-ForwardTest: SENDER IS NOT CURRENT PRIMARY
 ForwardTest: SENDER IS NOT CURRENT PRIMARY
   ... Appends done ... 
   ... Passed
@@ -122,50 +194,7 @@ Test: Partitioned old primary does not complete Gets ...
 GetTest: NOT THE PRIMARY YET
   ... Passed
 PASS
-ok  	pbservice	111.694s
-Test: Single primary, no backup ...
-  ... Passed
-Test: Add a backup ...
-  ... Passed
-Test: Count RPCs to viewserver ...
-  ... Passed
-Test: Primary failure ...
-  ... Passed
-Test: Kill last server, new one should not be active ...
-  ... Passed
-Test: at-most-once Append; unreliable ...
-  ... Passed
-Test: Put() immediately after backup failure ...
-  ... Passed
-Test: Put() immediately after primary failure ...
-  ... Passed
-Test: Concurrent Put()s to the same key ...
-  ... Passed
-Test: Concurrent Append()s to the same key ...
-  ... Passed
-Test: Concurrent Put()s to the same key; unreliable ...
-  ... Passed
-Test: Repeated failures/restarts ...
-GetTest: NOT THE PRIMARY YET
-GetTest: NOT THE PRIMARY YET
-ForwardTest: SENDER IS NOT CURRENT PRIMARY
-GetTest: NOT THE PRIMARY YET
-GetTest: NOT THE PRIMARY YET
-GetTest: NOT THE PRIMARY YET
-GetTest: NOT THE PRIMARY YET
-  ... Put/Gets done ... 
-  ... Passed
-Test: Repeated failures/restarts with concurrent updates to same key; unreliable ...
-  ... Appends done ... 
-  ... Passed
-Test: Old primary does not serve Gets ...
-GetTest: NOT THE PRIMARY YET
-  ... Passed
-Test: Partitioned old primary does not complete Gets ...
-GetTest: NOT THE PRIMARY YET
-  ... Passed
-PASS
-ok  	pbservice	111.809s
+ok  	pbservice	111.658s
 Test: Single primary, no backup ...
   ... Passed
 Test: Add a backup ...
@@ -192,10 +221,6 @@ Test: Repeated failures/restarts ...
 ForwardTest: SENDER IS NOT CURRENT PRIMARY
 GetTest: NOT THE PRIMARY YET
 GetTest: NOT THE PRIMARY YET
-GetTest: NOT THE PRIMARY YET
-GetTest: NOT THE PRIMARY YET
-GetTest: NOT THE PRIMARY YET
-GetTest: NOT THE PRIMARY YET
   ... Put/Gets done ... 
   ... Passed
 Test: Repeated failures/restarts with concurrent updates to same key; unreliable ...
@@ -209,47 +234,7 @@ Test: Partitioned old primary does not complete Gets ...
 GetTest: NOT THE PRIMARY YET
   ... Passed
 PASS
-ok  	pbservice	111.044s
-Test: Single primary, no backup ...
-  ... Passed
-Test: Add a backup ...
-  ... Passed
-Test: Count RPCs to viewserver ...
-  ... Passed
-Test: Primary failure ...
-  ... Passed
-Test: Kill last server, new one should not be active ...
-  ... Passed
-Test: at-most-once Append; unreliable ...
-  ... Passed
-Test: Put() immediately after backup failure ...
-  ... Passed
-Test: Put() immediately after primary failure ...
-  ... Passed
-Test: Concurrent Put()s to the same key ...
-  ... Passed
-Test: Concurrent Append()s to the same key ...
-  ... Passed
-Test: Concurrent Put()s to the same key; unreliable ...
-  ... Passed
-Test: Repeated failures/restarts ...
-ForwardTest: SENDER IS NOT CURRENT PRIMARY
-ForwardTest: SENDER IS NOT CURRENT PRIMARY
-  ... Put/Gets done ... 
-  ... Passed
-Test: Repeated failures/restarts with concurrent updates to same key; unreliable ...
-ForwardTest: SENDER IS NOT CURRENT PRIMARY
-ForwardTest: SENDER IS NOT CURRENT PRIMARY
-  ... Appends done ... 
-  ... Passed
-Test: Old primary does not serve Gets ...
-GetTest: NOT THE PRIMARY YET
-  ... Passed
-Test: Partitioned old primary does not complete Gets ...
-GetTest: NOT THE PRIMARY YET
-  ... Passed
-PASS
-ok  	pbservice	112.127s
+ok  	pbservice	111.796s
 Test: Single primary, no backup ...
   ... Passed
 Test: Add a backup ...
@@ -275,14 +260,47 @@ Test: Concurrent Put()s to the same key; unreliable ...
 Test: Repeated failures/restarts ...
 GetTest: NOT THE PRIMARY YET
 GetTest: NOT THE PRIMARY YET
-ForwardTest: SENDER IS NOT CURRENT PRIMARY
-ForwardTest: SENDER IS NOT CURRENT PRIMARY
-ForwardTest: SENDER IS NOT CURRENT PRIMARY
   ... Put/Gets done ... 
   ... Passed
 Test: Repeated failures/restarts with concurrent updates to same key; unreliable ...
+  ... Appends done ... 
+  ... Passed
+Test: Old primary does not serve Gets ...
+GetTest: NOT THE PRIMARY YET
+  ... Passed
+Test: Partitioned old primary does not complete Gets ...
+GetTest: NOT THE PRIMARY YET
+  ... Passed
+PASS
+ok  	pbservice	111.669s
+Test: Single primary, no backup ...
+  ... Passed
+Test: Add a backup ...
+  ... Passed
+Test: Count RPCs to viewserver ...
+  ... Passed
+Test: Primary failure ...
+  ... Passed
+Test: Kill last server, new one should not be active ...
+  ... Passed
+Test: at-most-once Append; unreliable ...
+  ... Passed
+Test: Put() immediately after backup failure ...
+  ... Passed
+Test: Put() immediately after primary failure ...
+  ... Passed
+Test: Concurrent Put()s to the same key ...
+  ... Passed
+Test: Concurrent Append()s to the same key ...
+  ... Passed
+Test: Concurrent Put()s to the same key; unreliable ...
+  ... Passed
+Test: Repeated failures/restarts ...
 ForwardTest: SENDER IS NOT CURRENT PRIMARY
-ForwardTest: SENDER IS NOT CURRENT PRIMARY
+GetTest: NOT THE PRIMARY YET
+  ... Put/Gets done ... 
+  ... Passed
+Test: Repeated failures/restarts with concurrent updates to same key; unreliable ...
 ForwardTest: SENDER IS NOT CURRENT PRIMARY
   ... Appends done ... 
   ... Passed
@@ -293,7 +311,802 @@ Test: Partitioned old primary does not complete Gets ...
 GetTest: NOT THE PRIMARY YET
   ... Passed
 PASS
-ok  	pbservice	111.707s
+ok  	pbservice	112.690s
+Test: Single primary, no backup ...
+  ... Passed
+Test: Add a backup ...
+  ... Passed
+Test: Count RPCs to viewserver ...
+  ... Passed
+Test: Primary failure ...
+  ... Passed
+Test: Kill last server, new one should not be active ...
+  ... Passed
+Test: at-most-once Append; unreliable ...
+  ... Passed
+Test: Put() immediately after backup failure ...
+  ... Passed
+Test: Put() immediately after primary failure ...
+  ... Passed
+Test: Concurrent Put()s to the same key ...
+ForwardTest: SENDER IS NOT CURRENT PRIMARY
+panic: test timed out after 10m0s
+
+goroutine 13787 [running]:
+testing.(*M).startAlarm.func1()
+	/usr/local/go/src/testing/testing.go:1377 +0xdf
+created by time.goFunc
+	/usr/local/go/src/time/sleep.go:168 +0x44
+
+goroutine 1 [chan receive, 9 minutes]:
+testing.(*T).Run(0xc000118300, 0x14776d2, 0x12, 0x1490600, 0x1084401)
+	/usr/local/go/src/testing/testing.go:961 +0x377
+testing.runTests.func1(0xc000118100)
+	/usr/local/go/src/testing/testing.go:1202 +0x78
+testing.tRunner(0xc000118100, 0xc00010fdc0)
+	/usr/local/go/src/testing/testing.go:909 +0xc9
+testing.runTests(0xc000104060, 0x17b0fe0, 0xa, 0xa, 0x0)
+	/usr/local/go/src/testing/testing.go:1200 +0x2a7
+testing.(*M).Run(0xc000110080, 0x0)
+	/usr/local/go/src/testing/testing.go:1117 +0x176
+main.main()
+	_testmain.go:62 +0x135
+
+goroutine 2064 [chan receive, 9 minutes]:
+net/rpc.(*Client).Call(...)
+	/usr/local/go/src/net/rpc/client.go:322
+pbservice.call(0xc000116da0, 0x1e, 0x1474617, 0xc, 0x13c65a0, 0xc0004b8a90, 0x13c65e0, 0xc0004bf860, 0xc000056c00)
+	/Users/adrianhsu/Google Drive/UCLA_20Spring/CS 134/cs134-assignments/hw2/src/pbservice/client.go:63 +0x160
+pbservice.(*Clerk).Get(0xc000569e38, 0x1480311, 0x1, 0x1, 0xc0001076a0)
+	/Users/adrianhsu/Google Drive/UCLA_20Spring/CS 134/cs134-assignments/hw2/src/pbservice/client.go:94 +0x15b
+pbservice.TestConcurrentSame(0xc000118300)
+	/Users/adrianhsu/Google Drive/UCLA_20Spring/CS 134/cs134-assignments/hw2/src/pbservice/test_test.go:379 +0x438
+testing.tRunner(0xc000118300, 0x1490600)
+	/usr/local/go/src/testing/testing.go:909 +0xc9
+created by testing.(*T).Run
+	/usr/local/go/src/testing/testing.go:960 +0x350
+
+goroutine 2130 [sleep]:
+runtime.goparkunlock(...)
+	/usr/local/go/src/runtime/proc.go:310
+time.Sleep(0x5f5e100)
+	/usr/local/go/src/runtime/time.go:105 +0x157
+viewservice.StartServer.func2(0xc0002cf650)
+	/Users/adrianhsu/Google Drive/UCLA_20Spring/CS 134/cs134-assignments/hw2/src/viewservice/server.go:268 +0x35
+created by viewservice.StartServer
+	/Users/adrianhsu/Google Drive/UCLA_20Spring/CS 134/cs134-assignments/hw2/src/viewservice/server.go:265 +0x24e
+
+goroutine 13744 [IO wait, 9 minutes]:
+internal/poll.runtime_pollWait(0x1e516b8, 0x72, 0xffffffffffffffff)
+	/usr/local/go/src/runtime/netpoll.go:184 +0x55
+internal/poll.(*pollDesc).wait(0xc000488098, 0x72, 0x1000, 0x1000, 0xffffffffffffffff)
+	/usr/local/go/src/internal/poll/fd_poll_runtime.go:87 +0x45
+internal/poll.(*pollDesc).waitRead(...)
+	/usr/local/go/src/internal/poll/fd_poll_runtime.go:92
+internal/poll.(*FD).Read(0xc000488080, 0xc00053b000, 0x1000, 0x1000, 0x0, 0x0, 0x0)
+	/usr/local/go/src/internal/poll/fd_unix.go:169 +0x22b
+net.(*netFD).Read(0xc000488080, 0xc00053b000, 0x1000, 0x1000, 0x0, 0x0, 0x0)
+	/usr/local/go/src/net/fd_unix.go:202 +0x4f
+net.(*conn).Read(0xc000556000, 0xc00053b000, 0x1000, 0x1000, 0x0, 0x0, 0x0)
+	/usr/local/go/src/net/net.go:184 +0x68
+bufio.(*Reader).Read(0xc00055e060, 0xc00051a000, 0x1, 0x9, 0x114ecdd, 0xc000488180, 0xc0004722e0)
+	/usr/local/go/src/bufio/bufio.go:226 +0x26a
+io.ReadAtLeast(0x1501be0, 0xc00055e060, 0xc00051a000, 0x1, 0x9, 0x1, 0x1156010, 0xc000488180, 0x10)
+	/usr/local/go/src/io/io.go:310 +0x87
+io.ReadFull(...)
+	/usr/local/go/src/io/io.go:329
+encoding/gob.decodeUintReader(0x1501be0, 0xc00055e060, 0xc00051a000, 0x9, 0x9, 0x203000, 0x0, 0xc00010bc28, 0x203000)
+	/usr/local/go/src/encoding/gob/decode.go:120 +0x6f
+encoding/gob.(*Decoder).recvMessage(0xc000488180, 0xc0004ae2c0)
+	/usr/local/go/src/encoding/gob/decoder.go:81 +0x57
+encoding/gob.(*Decoder).decodeTypeSequence(0xc000488180, 0xc00010bc00, 0x100de76)
+	/usr/local/go/src/encoding/gob/decoder.go:143 +0x10c
+encoding/gob.(*Decoder).DecodeValue(0xc000488180, 0x13c62a0, 0xc0004724a0, 0x16, 0x0, 0x0)
+	/usr/local/go/src/encoding/gob/decoder.go:211 +0x10b
+encoding/gob.(*Decoder).Decode(0xc000488180, 0x13c62a0, 0xc0004724a0, 0x31740, 0xc000081158)
+	/usr/local/go/src/encoding/gob/decoder.go:188 +0x16d
+net/rpc.(*gobServerCodec).ReadRequestHeader(0xc00052e840, 0xc0004724a0, 0x13c66e0, 0xc000454210)
+	/usr/local/go/src/net/rpc/server.go:397 +0x45
+net/rpc.(*Server).readRequestHeader(0xc000081130, 0x1509a60, 0xc00052e840, 0xc000454210, 0x16, 0xc0004ae2c0, 0xc000129501, 0x0, 0x0)
+	/usr/local/go/src/net/rpc/server.go:583 +0x67
+net/rpc.(*Server).readRequest(0xc000081130, 0x1509a60, 0xc00052e840, 0xc000081130, 0xc00051a010, 0xc00051a020, 0xc0002f5f80, 0xc000472c80, 0x13c66a0, 0xc0004ae2c0, ...)
+	/usr/local/go/src/net/rpc/server.go:543 +0x5a
+net/rpc.(*Server).ServeCodec(0xc000081130, 0x1509a60, 0xc00052e840)
+	/usr/local/go/src/net/rpc/server.go:458 +0x97
+net/rpc.(*Server).ServeConn(0xc000081130, 0x1e15068, 0xc000556000)
+	/usr/local/go/src/net/rpc/server.go:449 +0x158
+created by pbservice.StartServer.func1
+	/Users/adrianhsu/Google Drive/UCLA_20Spring/CS 134/cs134-assignments/hw2/src/pbservice/server.go:343 +0x3d0
+
+goroutine 13750 [IO wait, 9 minutes]:
+internal/poll.runtime_pollWait(0x1e51928, 0x72, 0xffffffffffffffff)
+	/usr/local/go/src/runtime/netpoll.go:184 +0x55
+internal/poll.(*pollDesc).wait(0xc000489198, 0x72, 0x1000, 0x1000, 0xffffffffffffffff)
+	/usr/local/go/src/internal/poll/fd_poll_runtime.go:87 +0x45
+internal/poll.(*pollDesc).waitRead(...)
+	/usr/local/go/src/internal/poll/fd_poll_runtime.go:92
+internal/poll.(*FD).Read(0xc000489180, 0xc000529000, 0x1000, 0x1000, 0x0, 0x0, 0x0)
+	/usr/local/go/src/internal/poll/fd_unix.go:169 +0x22b
+net.(*netFD).Read(0xc000489180, 0xc000529000, 0x1000, 0x1000, 0x0, 0x0, 0x0)
+	/usr/local/go/src/net/fd_unix.go:202 +0x4f
+net.(*conn).Read(0xc000557750, 0xc000529000, 0x1000, 0x1000, 0x0, 0x0, 0x0)
+	/usr/local/go/src/net/net.go:184 +0x68
+bufio.(*Reader).Read(0xc00033bc80, 0xc0004a28a0, 0x1, 0x9, 0x114ecdd, 0xc000489280, 0xc0004e4e20)
+	/usr/local/go/src/bufio/bufio.go:226 +0x26a
+io.ReadAtLeast(0x1501be0, 0xc00033bc80, 0xc0004a28a0, 0x1, 0x9, 0x1, 0x1156010, 0xc000489280, 0x10)
+	/usr/local/go/src/io/io.go:310 +0x87
+io.ReadFull(...)
+	/usr/local/go/src/io/io.go:329
+encoding/gob.decodeUintReader(0x1501be0, 0xc00033bc80, 0xc0004a28a0, 0x9, 0x9, 0x203000, 0x100, 0x80, 0x203000)
+	/usr/local/go/src/encoding/gob/decode.go:120 +0x6f
+encoding/gob.(*Decoder).recvMessage(0xc000489280, 0x7f)
+	/usr/local/go/src/encoding/gob/decoder.go:81 +0x57
+encoding/gob.(*Decoder).decodeTypeSequence(0xc000489280, 0xc0001a1c00, 0x100de76)
+	/usr/local/go/src/encoding/gob/decoder.go:143 +0x10c
+encoding/gob.(*Decoder).DecodeValue(0xc000489280, 0x13c62a0, 0xc0004e4fe0, 0x16, 0x0, 0x0)
+	/usr/local/go/src/encoding/gob/decoder.go:211 +0x10b
+encoding/gob.(*Decoder).Decode(0xc000489280, 0x13c62a0, 0xc0004e4fe0, 0x31740, 0xc000081158)
+	/usr/local/go/src/encoding/gob/decoder.go:188 +0x16d
+net/rpc.(*gobServerCodec).ReadRequestHeader(0xc0004e2a50, 0xc0004e4fe0, 0x13c66e0, 0xc000455a30)
+	/usr/local/go/src/net/rpc/server.go:397 +0x45
+net/rpc.(*Server).readRequestHeader(0xc000081130, 0x1509a60, 0xc0004e2a50, 0xc000455a30, 0x16, 0xc0004c3040, 0x203001, 0x0, 0x0)
+	/usr/local/go/src/net/rpc/server.go:583 +0x67
+net/rpc.(*Server).readRequest(0xc000081130, 0x1509a60, 0xc0004e2a50, 0xc000081130, 0xc0004a2898, 0xc0004a28b0, 0xc0002f5f80, 0xc000473e60, 0x13c66a0, 0xc0004c3040, ...)
+	/usr/local/go/src/net/rpc/server.go:543 +0x5a
+net/rpc.(*Server).ServeCodec(0xc000081130, 0x1509a60, 0xc0004e2a50)
+	/usr/local/go/src/net/rpc/server.go:458 +0x97
+net/rpc.(*Server).ServeConn(0xc000081130, 0x1e15068, 0xc000557750)
+	/usr/local/go/src/net/rpc/server.go:449 +0x158
+created by pbservice.StartServer.func1
+	/Users/adrianhsu/Google Drive/UCLA_20Spring/CS 134/cs134-assignments/hw2/src/pbservice/server.go:343 +0x3d0
+
+goroutine 13742 [IO wait, 9 minutes]:
+internal/poll.runtime_pollWait(0x1e51518, 0x72, 0xffffffffffffffff)
+	/usr/local/go/src/runtime/netpoll.go:184 +0x55
+internal/poll.(*pollDesc).wait(0xc0004d1698, 0x72, 0x1000, 0x1000, 0xffffffffffffffff)
+	/usr/local/go/src/internal/poll/fd_poll_runtime.go:87 +0x45
+internal/poll.(*pollDesc).waitRead(...)
+	/usr/local/go/src/internal/poll/fd_poll_runtime.go:92
+internal/poll.(*FD).Read(0xc0004d1680, 0xc000535000, 0x1000, 0x1000, 0x0, 0x0, 0x0)
+	/usr/local/go/src/internal/poll/fd_unix.go:169 +0x22b
+net.(*netFD).Read(0xc0004d1680, 0xc000535000, 0x1000, 0x1000, 0x0, 0x0, 0x0)
+	/usr/local/go/src/net/fd_unix.go:202 +0x4f
+net.(*conn).Read(0xc000500580, 0xc000535000, 0x1000, 0x1000, 0x0, 0x0, 0x0)
+	/usr/local/go/src/net/net.go:184 +0x68
+bufio.(*Reader).Read(0xc00049af60, 0xc00051a360, 0x1, 0x9, 0x114ecdd, 0xc0004d1780, 0xc000518ba0)
+	/usr/local/go/src/bufio/bufio.go:226 +0x26a
+io.ReadAtLeast(0x1501be0, 0xc00049af60, 0xc00051a360, 0x1, 0x9, 0x1, 0x1156010, 0xc0004d1780, 0x10)
+	/usr/local/go/src/io/io.go:310 +0x87
+io.ReadFull(...)
+	/usr/local/go/src/io/io.go:329
+encoding/gob.decodeUintReader(0x1501be0, 0xc00049af60, 0xc00051a360, 0x9, 0x9, 0x203000, 0x0, 0xc000355c28, 0x203000)
+	/usr/local/go/src/encoding/gob/decode.go:120 +0x6f
+encoding/gob.(*Decoder).recvMessage(0xc0004d1780, 0xc00051e840)
+	/usr/local/go/src/encoding/gob/decoder.go:81 +0x57
+encoding/gob.(*Decoder).decodeTypeSequence(0xc0004d1780, 0xc000355c00, 0x100de76)
+	/usr/local/go/src/encoding/gob/decoder.go:143 +0x10c
+encoding/gob.(*Decoder).DecodeValue(0xc0004d1780, 0x13c62a0, 0xc000518d60, 0x16, 0x0, 0x0)
+	/usr/local/go/src/encoding/gob/decoder.go:211 +0x10b
+encoding/gob.(*Decoder).Decode(0xc0004d1780, 0x13c62a0, 0xc000518d60, 0x31740, 0xc000081158)
+	/usr/local/go/src/encoding/gob/decoder.go:188 +0x16d
+net/rpc.(*gobServerCodec).ReadRequestHeader(0xc00052e2d0, 0xc000518d60, 0x13c66e0, 0xc0004b9730)
+	/usr/local/go/src/net/rpc/server.go:397 +0x45
+net/rpc.(*Server).readRequestHeader(0xc000081130, 0x1509a60, 0xc00052e2d0, 0xc0004b9730, 0x16, 0xc00051e840, 0x203001, 0x0, 0x0)
+	/usr/local/go/src/net/rpc/server.go:583 +0x67
+net/rpc.(*Server).readRequest(0xc000081130, 0x1509a60, 0xc00052e2d0, 0xc000081130, 0xc00051a358, 0xc00051a370, 0xc0002f5f80, 0xc000518920, 0x13c66a0, 0xc00051e840, ...)
+	/usr/local/go/src/net/rpc/server.go:543 +0x5a
+net/rpc.(*Server).ServeCodec(0xc000081130, 0x1509a60, 0xc00052e2d0)
+	/usr/local/go/src/net/rpc/server.go:458 +0x97
+net/rpc.(*Server).ServeConn(0xc000081130, 0x1e15068, 0xc000500580)
+	/usr/local/go/src/net/rpc/server.go:449 +0x158
+created by pbservice.StartServer.func1
+	/Users/adrianhsu/Google Drive/UCLA_20Spring/CS 134/cs134-assignments/hw2/src/pbservice/server.go:343 +0x3d0
+
+goroutine 13780 [IO wait, 9 minutes]:
+internal/poll.runtime_pollWait(0x1e519f8, 0x72, 0xffffffffffffffff)
+	/usr/local/go/src/runtime/netpoll.go:184 +0x55
+internal/poll.(*pollDesc).wait(0xc000488718, 0x72, 0x1000, 0x1000, 0xffffffffffffffff)
+	/usr/local/go/src/internal/poll/fd_poll_runtime.go:87 +0x45
+internal/poll.(*pollDesc).waitRead(...)
+	/usr/local/go/src/internal/poll/fd_poll_runtime.go:92
+internal/poll.(*FD).Read(0xc000488700, 0xc00018b000, 0x1000, 0x1000, 0x0, 0x0, 0x0)
+	/usr/local/go/src/internal/poll/fd_unix.go:169 +0x22b
+net.(*netFD).Read(0xc000488700, 0xc00018b000, 0x1000, 0x1000, 0x1157932, 0x1490c60, 0xc00012f3d8)
+	/usr/local/go/src/net/fd_unix.go:202 +0x4f
+net.(*conn).Read(0xc000556278, 0xc00018b000, 0x1000, 0x1000, 0x0, 0x0, 0x0)
+	/usr/local/go/src/net/net.go:184 +0x68
+bufio.(*Reader).Read(0xc00055e2a0, 0xc00051a600, 0x1, 0x9, 0x100, 0x0, 0xc00012f540)
+	/usr/local/go/src/bufio/bufio.go:226 +0x26a
+io.ReadAtLeast(0x1501be0, 0xc00055e2a0, 0xc00051a600, 0x1, 0x9, 0x1, 0x1019b6e, 0x1c26a00, 0x20300000000000)
+	/usr/local/go/src/io/io.go:310 +0x87
+io.ReadFull(...)
+	/usr/local/go/src/io/io.go:329
+encoding/gob.decodeUintReader(0x1501be0, 0xc00055e2a0, 0xc00051a600, 0x9, 0x9, 0x0, 0x5400000000, 0xc00012f630, 0x8)
+	/usr/local/go/src/encoding/gob/decode.go:120 +0x6f
+encoding/gob.(*Decoder).recvMessage(0xc000488900, 0x100de76)
+	/usr/local/go/src/encoding/gob/decoder.go:81 +0x57
+encoding/gob.(*Decoder).decodeTypeSequence(0xc000488900, 0x203000, 0xc00012f718)
+	/usr/local/go/src/encoding/gob/decoder.go:143 +0x10c
+encoding/gob.(*Decoder).DecodeValue(0xc000488900, 0x13c62e0, 0xc0000f2de0, 0x16, 0x0, 0x0)
+	/usr/local/go/src/encoding/gob/decoder.go:211 +0x10b
+encoding/gob.(*Decoder).Decode(0xc000488900, 0x13c62e0, 0xc0000f2de0, 0xc00012f701, 0xc0000f2de0)
+	/usr/local/go/src/encoding/gob/decoder.go:188 +0x16d
+net/rpc.(*gobClientCodec).ReadResponseHeader(0xc00052f050, 0xc0000f2de0, 0x3, 0x3)
+	/usr/local/go/src/net/rpc/client.go:228 +0x45
+net/rpc.(*Client).input(0xc00055e360)
+	/usr/local/go/src/net/rpc/client.go:109 +0xa5
+created by net/rpc.NewClientWithCodec
+	/usr/local/go/src/net/rpc/client.go:206 +0x89
+
+goroutine 13762 [semacquire, 9 minutes]:
+sync.runtime_SemacquireMutex(0xc00032b6fc, 0xc000057b00, 0x1)
+	/usr/local/go/src/runtime/sema.go:71 +0x47
+sync.(*Mutex).lockSlow(0xc00032b6f8)
+	/usr/local/go/src/sync/mutex.go:138 +0xfc
+sync.(*Mutex).Lock(...)
+	/usr/local/go/src/sync/mutex.go:81
+sync.(*RWMutex).Lock(0xc00032b6f8)
+	/usr/local/go/src/sync/rwmutex.go:98 +0x97
+pbservice.(*PBServer).Forward(0xc00032b6c0, 0xc0001aa280, 0xc000180b10, 0x0, 0x0)
+	/Users/adrianhsu/Google Drive/UCLA_20Spring/CS 134/cs134-assignments/hw2/src/pbservice/server.go:171 +0x59
+reflect.Value.call(0xc0000944e0, 0xc0000113e0, 0x13, 0x146f22b, 0x4, 0xc000057f18, 0x3, 0x3, 0x1509a60, 0xc0004cb2c0, ...)
+	/usr/local/go/src/reflect/value.go:460 +0x5f6
+reflect.Value.Call(0xc0000944e0, 0xc0000113e0, 0x13, 0xc00012af18, 0x3, 0x3, 0xc000046c00, 0x28, 0x30)
+	/usr/local/go/src/reflect/value.go:321 +0xb4
+net/rpc.(*service).call(0xc000259d40, 0xc000081130, 0xc0001dc790, 0xc0001dc7a0, 0xc0002f5e00, 0xc0003dd3c0, 0x13c6720, 0xc0001aa280, 0x16, 0x13c6760, ...)
+	/usr/local/go/src/net/rpc/server.go:377 +0x16f
+created by net/rpc.(*Server).ServeCodec
+	/usr/local/go/src/net/rpc/server.go:474 +0x42b
+
+goroutine 2065 [IO wait, 9 minutes]:
+internal/poll.runtime_pollWait(0x1e51ed8, 0x72, 0x0)
+	/usr/local/go/src/runtime/netpoll.go:184 +0x55
+internal/poll.(*pollDesc).wait(0xc0002d5418, 0x72, 0x0, 0x0, 0x147071c)
+	/usr/local/go/src/internal/poll/fd_poll_runtime.go:87 +0x45
+internal/poll.(*pollDesc).waitRead(...)
+	/usr/local/go/src/internal/poll/fd_poll_runtime.go:92
+internal/poll.(*FD).Accept(0xc0002d5400, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0)
+	/usr/local/go/src/internal/poll/fd_unix.go:384 +0x1f8
+net.(*netFD).accept(0xc0002d5400, 0x145f2e0, 0x1e15068, 0x0)
+	/usr/local/go/src/net/fd_unix.go:238 +0x42
+net.(*UnixListener).accept(0xc00027f710, 0xc0002e6f20, 0xc0002e6f28, 0x18)
+	/usr/local/go/src/net/unixsock_posix.go:162 +0x32
+net.(*UnixListener).Accept(0xc00027f710, 0x1490548, 0xc000120f00, 0x1e15068, 0xc0001d2630)
+	/usr/local/go/src/net/unixsock.go:260 +0x47
+viewservice.StartServer.func1(0xc0002cf650, 0xc000120f00, 0xc000117460, 0x1f)
+	/Users/adrianhsu/Google Drive/UCLA_20Spring/CS 134/cs134-assignments/hw2/src/viewservice/server.go:250 +0x54
+created by viewservice.StartServer
+	/Users/adrianhsu/Google Drive/UCLA_20Spring/CS 134/cs134-assignments/hw2/src/viewservice/server.go:248 +0x22c
+
+goroutine 13764 [IO wait, 9 minutes]:
+internal/poll.runtime_pollWait(0x1e51b98, 0x72, 0xffffffffffffffff)
+	/usr/local/go/src/runtime/netpoll.go:184 +0x55
+internal/poll.(*pollDesc).wait(0xc000563218, 0x72, 0x1000, 0x1000, 0xffffffffffffffff)
+	/usr/local/go/src/internal/poll/fd_poll_runtime.go:87 +0x45
+internal/poll.(*pollDesc).waitRead(...)
+	/usr/local/go/src/internal/poll/fd_poll_runtime.go:92
+internal/poll.(*FD).Read(0xc000563200, 0xc0001a7000, 0x1000, 0x1000, 0x0, 0x0, 0x0)
+	/usr/local/go/src/internal/poll/fd_unix.go:169 +0x22b
+net.(*netFD).Read(0xc000563200, 0xc0001a7000, 0x1000, 0x1000, 0x13d5780, 0x13d1240, 0xc00051a791)
+	/usr/local/go/src/net/fd_unix.go:202 +0x4f
+net.(*conn).Read(0xc0001d2628, 0xc0001a7000, 0x1000, 0x1000, 0x0, 0x0, 0x0)
+	/usr/local/go/src/net/net.go:184 +0x68
+bufio.(*Reader).Read(0xc000388d20, 0xc0001dc910, 0x1, 0x9, 0x114ecdd, 0xc000563300, 0xc0004beca0)
+	/usr/local/go/src/bufio/bufio.go:226 +0x26a
+io.ReadAtLeast(0x1501be0, 0xc000388d20, 0xc0001dc910, 0x1, 0x9, 0x1, 0x1156010, 0xc000563300, 0x10)
+	/usr/local/go/src/io/io.go:310 +0x87
+io.ReadFull(...)
+	/usr/local/go/src/io/io.go:329
+encoding/gob.decodeUintReader(0x1501be0, 0xc000388d20, 0xc0001dc910, 0x9, 0x9, 0x203000, 0x0, 0xc0001a5c28, 0x203000)
+	/usr/local/go/src/encoding/gob/decode.go:120 +0x6f
+encoding/gob.(*Decoder).recvMessage(0xc000563300, 0xc0004b8600)
+	/usr/local/go/src/encoding/gob/decoder.go:81 +0x57
+encoding/gob.(*Decoder).decodeTypeSequence(0xc000563300, 0xc0001a5c00, 0x100de76)
+	/usr/local/go/src/encoding/gob/decoder.go:143 +0x10c
+encoding/gob.(*Decoder).DecodeValue(0xc000563300, 0x13c62a0, 0xc0004bee40, 0x16, 0x0, 0x0)
+	/usr/local/go/src/encoding/gob/decoder.go:211 +0x10b
+encoding/gob.(*Decoder).Decode(0xc000563300, 0x13c62a0, 0xc0004bee40, 0x31580, 0xc000081158)
+	/usr/local/go/src/encoding/gob/decoder.go:188 +0x16d
+net/rpc.(*gobServerCodec).ReadRequestHeader(0xc0004cbad0, 0xc0004bee40, 0x13c6520, 0xc0004b86a0)
+	/usr/local/go/src/net/rpc/server.go:397 +0x45
+net/rpc.(*Server).readRequestHeader(0xc000081130, 0x1509a60, 0xc0004cbad0, 0xc0004b86a0, 0x16, 0xc0004b8600, 0x203001, 0x0, 0x0)
+	/usr/local/go/src/net/rpc/server.go:583 +0x67
+net/rpc.(*Server).readRequest(0xc000081130, 0x1509a60, 0xc0004cbad0, 0xc000081130, 0xc0001dc8f8, 0xc0001dc920, 0xc0002f5d80, 0xc0003dd8a0, 0x13c64e0, 0xc0004b8600, ...)
+	/usr/local/go/src/net/rpc/server.go:543 +0x5a
+net/rpc.(*Server).ServeCodec(0xc000081130, 0x1509a60, 0xc0004cbad0)
+	/usr/local/go/src/net/rpc/server.go:458 +0x97
+net/rpc.(*Server).ServeConn(0xc000081130, 0x1e15068, 0xc0001d2628)
+	/usr/local/go/src/net/rpc/server.go:449 +0x158
+created by pbservice.StartServer.func1
+	/Users/adrianhsu/Google Drive/UCLA_20Spring/CS 134/cs134-assignments/hw2/src/pbservice/server.go:343 +0x3d0
+
+goroutine 2119 [chan receive, 9 minutes]:
+net/rpc.(*Client).Call(...)
+	/usr/local/go/src/net/rpc/client.go:322
+pbservice.call(0xc000116620, 0x1e, 0x1478f7c, 0x15, 0x13c64e0, 0xc0004b83e0, 0x13c6520, 0xc0004b83f0, 0xc0004be000)
+	/Users/adrianhsu/Google Drive/UCLA_20Spring/CS 134/cs134-assignments/hw2/src/pbservice/client.go:63 +0x160
+pbservice.(*PBServer).Bootstrapping(0xc00032b730, 0xc000116620, 0x1e, 0xc000116601, 0x1e)
+	/Users/adrianhsu/Google Drive/UCLA_20Spring/CS 134/cs134-assignments/hw2/src/pbservice/server.go:66 +0xfd
+pbservice.(*PBServer).checkNewBackup(...)
+	/Users/adrianhsu/Google Drive/UCLA_20Spring/CS 134/cs134-assignments/hw2/src/pbservice/server.go:254
+pbservice.(*PBServer).tick(0xc00032b730)
+	/Users/adrianhsu/Google Drive/UCLA_20Spring/CS 134/cs134-assignments/hw2/src/pbservice/server.go:274 +0x23d
+pbservice.StartServer.func2(0xc00032b730)
+	/Users/adrianhsu/Google Drive/UCLA_20Spring/CS 134/cs134-assignments/hw2/src/pbservice/server.go:357 +0x28
+created by pbservice.StartServer
+	/Users/adrianhsu/Google Drive/UCLA_20Spring/CS 134/cs134-assignments/hw2/src/pbservice/server.go:355 +0x2d0
+
+goroutine 13692 [IO wait, 9 minutes]:
+internal/poll.runtime_pollWait(0x1e515e8, 0x72, 0xffffffffffffffff)
+	/usr/local/go/src/runtime/netpoll.go:184 +0x55
+internal/poll.(*pollDesc).wait(0xc0004d0098, 0x72, 0x1000, 0x1000, 0xffffffffffffffff)
+	/usr/local/go/src/internal/poll/fd_poll_runtime.go:87 +0x45
+internal/poll.(*pollDesc).waitRead(...)
+	/usr/local/go/src/internal/poll/fd_poll_runtime.go:92
+internal/poll.(*FD).Read(0xc0004d0080, 0xc000510000, 0x1000, 0x1000, 0x0, 0x0, 0x0)
+	/usr/local/go/src/internal/poll/fd_unix.go:169 +0x22b
+net.(*netFD).Read(0xc0004d0080, 0xc000510000, 0x1000, 0x1000, 0x1157932, 0x1490c60, 0x0)
+	/usr/local/go/src/net/fd_unix.go:202 +0x4f
+net.(*conn).Read(0xc000500000, 0xc000510000, 0x1000, 0x1000, 0x0, 0x0, 0x0)
+	/usr/local/go/src/net/net.go:184 +0x68
+bufio.(*Reader).Read(0xc00049a000, 0xc00001c0e0, 0x1, 0x9, 0x1dfffff, 0xc000081158, 0xc00012ad40)
+	/usr/local/go/src/bufio/bufio.go:226 +0x26a
+io.ReadAtLeast(0x1501be0, 0xc00049a000, 0xc00001c0e0, 0x1, 0x9, 0x1, 0x400, 0x1c11e00, 0x1dfffff)
+	/usr/local/go/src/io/io.go:310 +0x87
+io.ReadFull(...)
+	/usr/local/go/src/io/io.go:329
+encoding/gob.decodeUintReader(0x1501be0, 0xc00049a000, 0xc00001c0e0, 0x9, 0x9, 0x1e94820, 0x0, 0xc00012ae30, 0x8)
+	/usr/local/go/src/encoding/gob/decode.go:120 +0x6f
+encoding/gob.(*Decoder).recvMessage(0xc0004d0280, 0x100de76)
+	/usr/local/go/src/encoding/gob/decoder.go:81 +0x57
+encoding/gob.(*Decoder).decodeTypeSequence(0xc0004d0280, 0x203000, 0x17c1638)
+	/usr/local/go/src/encoding/gob/decoder.go:143 +0x10c
+encoding/gob.(*Decoder).DecodeValue(0xc0004d0280, 0x13c62e0, 0xc000170180, 0x16, 0x0, 0x0)
+	/usr/local/go/src/encoding/gob/decoder.go:211 +0x10b
+encoding/gob.(*Decoder).Decode(0xc0004d0280, 0x13c62e0, 0xc000170180, 0x1440901, 0xc000170180)
+	/usr/local/go/src/encoding/gob/decoder.go:188 +0x16d
+net/rpc.(*gobClientCodec).ReadResponseHeader(0xc000170120, 0xc000170180, 0x143bfa0, 0x1156c83)
+	/usr/local/go/src/net/rpc/client.go:228 +0x45
+net/rpc.(*Client).input(0xc00049a0c0)
+	/usr/local/go/src/net/rpc/client.go:109 +0xa5
+created by net/rpc.NewClientWithCodec
+	/usr/local/go/src/net/rpc/client.go:206 +0x89
+
+goroutine 2118 [IO wait, 9 minutes]:
+internal/poll.runtime_pollWait(0x1e512a8, 0x72, 0x0)
+	/usr/local/go/src/runtime/netpoll.go:184 +0x55
+internal/poll.(*pollDesc).wait(0xc000350518, 0x72, 0x0, 0x0, 0x147071c)
+	/usr/local/go/src/internal/poll/fd_poll_runtime.go:87 +0x45
+internal/poll.(*pollDesc).waitRead(...)
+	/usr/local/go/src/internal/poll/fd_poll_runtime.go:92
+internal/poll.(*FD).Accept(0xc000350500, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0)
+	/usr/local/go/src/internal/poll/fd_unix.go:384 +0x1f8
+net.(*netFD).accept(0xc000350500, 0x145f2e0, 0x1e15068, 0x0)
+	/usr/local/go/src/net/fd_unix.go:238 +0x42
+net.(*UnixListener).accept(0xc000406150, 0xc0002e7ef8, 0xc0002e7f00, 0x18)
+	/usr/local/go/src/net/unixsock_posix.go:162 +0x32
+net.(*UnixListener).Accept(0xc000406150, 0x1490548, 0xc0000811d0, 0x1e15068, 0xc000556628)
+	/usr/local/go/src/net/unixsock.go:260 +0x47
+pbservice.StartServer.func1(0xc00032b730, 0xc0000811d0, 0xc00034e160, 0x1e)
+	/Users/adrianhsu/Google Drive/UCLA_20Spring/CS 134/cs134-assignments/hw2/src/pbservice/server.go:328 +0x54
+created by pbservice.StartServer
+	/Users/adrianhsu/Google Drive/UCLA_20Spring/CS 134/cs134-assignments/hw2/src/pbservice/server.go:326 +0x2ae
+
+goroutine 13786 [semacquire, 9 minutes]:
+sync.runtime_SemacquireMutex(0xc00032b76c, 0x1156400, 0x1)
+	/usr/local/go/src/runtime/sema.go:71 +0x47
+sync.(*Mutex).lockSlow(0xc00032b768)
+	/usr/local/go/src/sync/mutex.go:138 +0xfc
+sync.(*Mutex).Lock(...)
+	/usr/local/go/src/sync/mutex.go:81
+sync.(*RWMutex).Lock(0xc00032b768)
+	/usr/local/go/src/sync/rwmutex.go:98 +0x97
+pbservice.(*PBServer).Get(0xc00032b730, 0xc0004b8c70, 0xc0003a40c0, 0x0, 0x0)
+	/Users/adrianhsu/Google Drive/UCLA_20Spring/CS 134/cs134-assignments/hw2/src/pbservice/server.go:96 +0x5c
+reflect.Value.call(0xc0000945a0, 0xc000011430, 0x13, 0x146f22b, 0x4, 0xc0001fff18, 0x3, 0x3, 0x1509a60, 0xc00052fda0, ...)
+	/usr/local/go/src/reflect/value.go:460 +0x5f6
+reflect.Value.Call(0xc0000945a0, 0xc000011430, 0x13, 0xc00012cf18, 0x3, 0x3, 0x17ba720, 0x28, 0x30)
+	/usr/local/go/src/reflect/value.go:321 +0xb4
+net/rpc.(*service).call(0xc000259d80, 0xc0000811d0, 0xc00051aae8, 0xc00051ab00, 0xc000350380, 0xc0001043c0, 0x13c65a0, 0xc0004b8c70, 0x16, 0x13c65e0, ...)
+	/usr/local/go/src/net/rpc/server.go:377 +0x16f
+created by net/rpc.(*Server).ServeCodec
+	/usr/local/go/src/net/rpc/server.go:474 +0x42b
+
+goroutine 826 [sleep]:
+runtime.goparkunlock(...)
+	/usr/local/go/src/runtime/proc.go:310
+time.Sleep(0x5f5e100)
+	/usr/local/go/src/runtime/time.go:105 +0x157
+pbservice.(*Clerk).Get(0xc00000eb20, 0x146ecb0, 0x1, 0x16, 0x13cada0)
+	/Users/adrianhsu/Google Drive/UCLA_20Spring/CS 134/cs134-assignments/hw2/src/pbservice/client.go:100 +0x173
+pbservice.TestBasicFail.func1(0xc00000eb20, 0xc000130240)
+	/Users/adrianhsu/Google Drive/UCLA_20Spring/CS 134/cs134-assignments/hw2/src/pbservice/test_test.go:159 +0x40
+created by pbservice.TestBasicFail
+	/Users/adrianhsu/Google Drive/UCLA_20Spring/CS 134/cs134-assignments/hw2/src/pbservice/test_test.go:158 +0x101f
+
+goroutine 2116 [IO wait, 9 minutes]:
+internal/poll.runtime_pollWait(0x1e51858, 0x72, 0x0)
+	/usr/local/go/src/runtime/netpoll.go:184 +0x55
+internal/poll.(*pollDesc).wait(0xc000350098, 0x72, 0x0, 0x0, 0x147071c)
+	/usr/local/go/src/internal/poll/fd_poll_runtime.go:87 +0x45
+internal/poll.(*pollDesc).waitRead(...)
+	/usr/local/go/src/internal/poll/fd_poll_runtime.go:92
+internal/poll.(*FD).Accept(0xc000350080, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0)
+	/usr/local/go/src/internal/poll/fd_unix.go:384 +0x1f8
+net.(*netFD).accept(0xc000350080, 0x145f2e0, 0x1e15068, 0x0)
+	/usr/local/go/src/net/fd_unix.go:238 +0x42
+net.(*UnixListener).accept(0xc0002d3ec0, 0xc0002e8ef8, 0xc0002e8f00, 0x18)
+	/usr/local/go/src/net/unixsock_posix.go:162 +0x32
+net.(*UnixListener).Accept(0xc0002d3ec0, 0x1490548, 0xc000081130, 0x1e15068, 0xc0001d2628)
+	/usr/local/go/src/net/unixsock.go:260 +0x47
+pbservice.StartServer.func1(0xc00032b6c0, 0xc000081130, 0xc00034e040, 0x1e)
+	/Users/adrianhsu/Google Drive/UCLA_20Spring/CS 134/cs134-assignments/hw2/src/pbservice/server.go:328 +0x54
+created by pbservice.StartServer
+	/Users/adrianhsu/Google Drive/UCLA_20Spring/CS 134/cs134-assignments/hw2/src/pbservice/server.go:326 +0x2ae
+
+goroutine 2143 [chan receive, 9 minutes]:
+net/rpc.(*Client).Call(...)
+	/usr/local/go/src/net/rpc/client.go:322
+pbservice.call(0xc00034bd20, 0x1e, 0x147761e, 0x12, 0x13c66a0, 0xc00051e500, 0x13c66e0, 0xc0004b9510, 0x100ac00)
+	/Users/adrianhsu/Google Drive/UCLA_20Spring/CS 134/cs134-assignments/hw2/src/pbservice/client.go:63 +0x160
+pbservice.(*Clerk).PutAppend(0xc0001fcf68, 0x1480311, 0x1, 0xc00052c100, 0x13, 0x146ef8f, 0x3)
+	/Users/adrianhsu/Google Drive/UCLA_20Spring/CS 134/cs134-assignments/hw2/src/pbservice/client.go:128 +0x1ce
+pbservice.(*Clerk).Put(...)
+	/Users/adrianhsu/Google Drive/UCLA_20Spring/CS 134/cs134-assignments/hw2/src/pbservice/client.go:149
+pbservice.TestConcurrentSame.func1(0xc000117460, 0x1f, 0xc0001076a0, 0x1)
+	/Users/adrianhsu/Google Drive/UCLA_20Spring/CS 134/cs134-assignments/hw2/src/pbservice/test_test.go:366 +0x21f
+created by pbservice.TestConcurrentSame
+	/Users/adrianhsu/Google Drive/UCLA_20Spring/CS 134/cs134-assignments/hw2/src/pbservice/test_test.go:360 +0x325
+
+goroutine 13740 [IO wait, 9 minutes]:
+internal/poll.runtime_pollWait(0x1e51c68, 0x72, 0xffffffffffffffff)
+	/usr/local/go/src/runtime/netpoll.go:184 +0x55
+internal/poll.(*pollDesc).wait(0xc0004d1098, 0x72, 0x1000, 0x1000, 0xffffffffffffffff)
+	/usr/local/go/src/internal/poll/fd_poll_runtime.go:87 +0x45
+internal/poll.(*pollDesc).waitRead(...)
+	/usr/local/go/src/internal/poll/fd_poll_runtime.go:92
+internal/poll.(*FD).Read(0xc0004d1080, 0xc000523000, 0x1000, 0x1000, 0x0, 0x0, 0x0)
+	/usr/local/go/src/internal/poll/fd_unix.go:169 +0x22b
+net.(*netFD).Read(0xc0004d1080, 0xc000523000, 0x1000, 0x1000, 0x1157932, 0x1490c60, 0xc00003fbd8)
+	/usr/local/go/src/net/fd_unix.go:202 +0x4f
+net.(*conn).Read(0xc000500440, 0xc000523000, 0x1000, 0x1000, 0x0, 0x0, 0x0)
+	/usr/local/go/src/net/net.go:184 +0x68
+bufio.(*Reader).Read(0xc00049ac60, 0xc00051a130, 0x1, 0x9, 0x100, 0x0, 0xc00003fd40)
+	/usr/local/go/src/bufio/bufio.go:226 +0x26a
+io.ReadAtLeast(0x1501be0, 0xc00049ac60, 0xc00051a130, 0x1, 0x9, 0x1, 0x101690f, 0x1c28900, 0x20300000000000)
+	/usr/local/go/src/io/io.go:310 +0x87
+io.ReadFull(...)
+	/usr/local/go/src/io/io.go:329
+encoding/gob.decodeUintReader(0x1501be0, 0xc00049ac60, 0xc00051a130, 0x9, 0x9, 0x0, 0x1c28a00, 0xc00003fe30, 0x8)
+	/usr/local/go/src/encoding/gob/decode.go:120 +0x6f
+encoding/gob.(*Decoder).recvMessage(0xc0004d1280, 0x100de76)
+	/usr/local/go/src/encoding/gob/decoder.go:81 +0x57
+encoding/gob.(*Decoder).decodeTypeSequence(0xc0004d1280, 0x203000, 0xc00003ff18)
+	/usr/local/go/src/encoding/gob/decoder.go:143 +0x10c
+encoding/gob.(*Decoder).DecodeValue(0xc0004d1280, 0x13c62e0, 0xc0004cbe00, 0x16, 0x0, 0x0)
+	/usr/local/go/src/encoding/gob/decoder.go:211 +0x10b
+encoding/gob.(*Decoder).Decode(0xc0004d1280, 0x13c62e0, 0xc0004cbe00, 0xc00003ff01, 0xc0004cbe00)
+	/usr/local/go/src/encoding/gob/decoder.go:188 +0x16d
+net/rpc.(*gobClientCodec).ReadResponseHeader(0xc0004cbda0, 0xc0004cbe00, 0x3, 0x3)
+	/usr/local/go/src/net/rpc/client.go:228 +0x45
+net/rpc.(*Client).input(0xc00049ad20)
+	/usr/local/go/src/net/rpc/client.go:109 +0xa5
+created by net/rpc.NewClientWithCodec
+	/usr/local/go/src/net/rpc/client.go:206 +0x89
+
+goroutine 2142 [chan receive, 9 minutes]:
+net/rpc.(*Client).Call(...)
+	/usr/local/go/src/net/rpc/client.go:322
+pbservice.call(0xc00040c780, 0x1e, 0x147761e, 0x12, 0x13c66a0, 0xc00051e180, 0x13c66e0, 0xc0004b9330, 0x100ac00)
+	/Users/adrianhsu/Google Drive/UCLA_20Spring/CS 134/cs134-assignments/hw2/src/pbservice/client.go:63 +0x160
+pbservice.(*Clerk).PutAppend(0xc0001fef68, 0x1480311, 0x1, 0xc0004a7e60, 0x13, 0x146ef8f, 0x3)
+	/Users/adrianhsu/Google Drive/UCLA_20Spring/CS 134/cs134-assignments/hw2/src/pbservice/client.go:128 +0x1ce
+pbservice.(*Clerk).Put(...)
+	/Users/adrianhsu/Google Drive/UCLA_20Spring/CS 134/cs134-assignments/hw2/src/pbservice/client.go:149
+pbservice.TestConcurrentSame.func1(0xc000117460, 0x1f, 0xc0001076a0, 0x0)
+	/Users/adrianhsu/Google Drive/UCLA_20Spring/CS 134/cs134-assignments/hw2/src/pbservice/test_test.go:366 +0x21f
+created by pbservice.TestConcurrentSame
+	/Users/adrianhsu/Google Drive/UCLA_20Spring/CS 134/cs134-assignments/hw2/src/pbservice/test_test.go:360 +0x325
+
+goroutine 13584 [IO wait, 9 minutes]:
+internal/poll.runtime_pollWait(0x1e51378, 0x72, 0xffffffffffffffff)
+	/usr/local/go/src/runtime/netpoll.go:184 +0x55
+internal/poll.(*pollDesc).wait(0xc000562b18, 0x72, 0x1000, 0x1000, 0xffffffffffffffff)
+	/usr/local/go/src/internal/poll/fd_poll_runtime.go:87 +0x45
+internal/poll.(*pollDesc).waitRead(...)
+	/usr/local/go/src/internal/poll/fd_poll_runtime.go:92
+internal/poll.(*FD).Read(0xc000562b00, 0xc000123000, 0x1000, 0x1000, 0x0, 0x0, 0x0)
+	/usr/local/go/src/internal/poll/fd_unix.go:169 +0x22b
+net.(*netFD).Read(0xc000562b00, 0xc000123000, 0x1000, 0x1000, 0x1157932, 0x1490c60, 0xc00012abd8)
+	/usr/local/go/src/net/fd_unix.go:202 +0x4f
+net.(*conn).Read(0xc0001d24d8, 0xc000123000, 0x1000, 0x1000, 0x0, 0x0, 0x0)
+	/usr/local/go/src/net/net.go:184 +0x68
+bufio.(*Reader).Read(0xc0003886c0, 0xc0001dc6f0, 0x1, 0x9, 0x1dfffff, 0x0, 0xc00012ad40)
+	/usr/local/go/src/bufio/bufio.go:226 +0x26a
+io.ReadAtLeast(0x1501be0, 0xc0003886c0, 0xc0001dc6f0, 0x1, 0x9, 0x1, 0x101690f, 0x1c07600, 0x20300000000000)
+	/usr/local/go/src/io/io.go:310 +0x87
+io.ReadFull(...)
+	/usr/local/go/src/io/io.go:329
+encoding/gob.decodeUintReader(0x1501be0, 0xc0003886c0, 0xc0001dc6f0, 0x9, 0x9, 0x0, 0x1e166c0, 0xc00012ae30, 0x8)
+	/usr/local/go/src/encoding/gob/decode.go:120 +0x6f
+encoding/gob.(*Decoder).recvMessage(0xc000562d00, 0x100de76)
+	/usr/local/go/src/encoding/gob/decoder.go:81 +0x57
+encoding/gob.(*Decoder).decodeTypeSequence(0xc000562d00, 0x203000, 0xc00012af18)
+	/usr/local/go/src/encoding/gob/decoder.go:143 +0x10c
+encoding/gob.(*Decoder).DecodeValue(0xc000562d00, 0x13c62e0, 0xc0004cb1d0, 0x16, 0x0, 0x0)
+	/usr/local/go/src/encoding/gob/decoder.go:211 +0x10b
+encoding/gob.(*Decoder).Decode(0xc000562d00, 0x13c62e0, 0xc0004cb1d0, 0xc00012af01, 0xc0004cb1d0)
+	/usr/local/go/src/encoding/gob/decoder.go:188 +0x16d
+net/rpc.(*gobClientCodec).ReadResponseHeader(0xc0004cb170, 0xc0004cb1d0, 0x3, 0x3)
+	/usr/local/go/src/net/rpc/client.go:228 +0x45
+net/rpc.(*Client).input(0xc0003887e0)
+	/usr/local/go/src/net/rpc/client.go:109 +0xa5
+created by net/rpc.NewClientWithCodec
+	/usr/local/go/src/net/rpc/client.go:206 +0x89
+
+goroutine 2117 [semacquire, 9 minutes]:
+sync.runtime_SemacquireMutex(0xc00032b6fc, 0x13c6200, 0x1)
+	/usr/local/go/src/runtime/sema.go:71 +0x47
+sync.(*Mutex).lockSlow(0xc00032b6f8)
+	/usr/local/go/src/sync/mutex.go:138 +0xfc
+sync.(*Mutex).Lock(...)
+	/usr/local/go/src/sync/mutex.go:81
+sync.(*RWMutex).Lock(0xc00032b6f8)
+	/usr/local/go/src/sync/rwmutex.go:98 +0x97
+pbservice.(*PBServer).tick(0xc00032b6c0)
+	/Users/adrianhsu/Google Drive/UCLA_20Spring/CS 134/cs134-assignments/hw2/src/pbservice/server.go:270 +0x4e
+pbservice.StartServer.func2(0xc00032b6c0)
+	/Users/adrianhsu/Google Drive/UCLA_20Spring/CS 134/cs134-assignments/hw2/src/pbservice/server.go:357 +0x28
+created by pbservice.StartServer
+	/Users/adrianhsu/Google Drive/UCLA_20Spring/CS 134/cs134-assignments/hw2/src/pbservice/server.go:355 +0x2d0
+
+goroutine 13693 [semacquire, 9 minutes]:
+sync.runtime_SemacquireMutex(0xc00032b6fc, 0xc0002eb900, 0x1)
+	/usr/local/go/src/runtime/sema.go:71 +0x47
+sync.(*Mutex).lockSlow(0xc00032b6f8)
+	/usr/local/go/src/sync/mutex.go:138 +0xfc
+sync.(*Mutex).Lock(...)
+	/usr/local/go/src/sync/mutex.go:81
+sync.(*RWMutex).Lock(0xc00032b6f8)
+	/usr/local/go/src/sync/rwmutex.go:98 +0x97
+pbservice.(*PBServer).PutAppend(0xc00032b6c0, 0xc0004ae2c0, 0xc000454210, 0x0, 0x0)
+	/Users/adrianhsu/Google Drive/UCLA_20Spring/CS 134/cs134-assignments/hw2/src/pbservice/server.go:188 +0x5c
+reflect.Value.call(0xc000094600, 0xc0000113f8, 0x13, 0x146f22b, 0x4, 0xc0002ebf18, 0x3, 0x3, 0xc000170180, 0xc00012ae88, ...)
+	/usr/local/go/src/reflect/value.go:460 +0x5f6
+reflect.Value.Call(0xc000094600, 0xc0000113f8, 0x13, 0xc00012af18, 0x3, 0x3, 0xc000148000, 0x28, 0x30)
+	/usr/local/go/src/reflect/value.go:321 +0xb4
+net/rpc.(*service).call(0xc000259d40, 0xc000081130, 0xc00051a010, 0xc00051a020, 0xc0002f5f80, 0xc000472c80, 0x13c66a0, 0xc0004ae2c0, 0x16, 0x13c66e0, ...)
+	/usr/local/go/src/net/rpc/server.go:377 +0x16f
+created by net/rpc.(*Server).ServeCodec
+	/usr/local/go/src/net/rpc/server.go:474 +0x42b
+
+goroutine 2144 [chan receive, 9 minutes]:
+net/rpc.(*Client).Call(...)
+	/usr/local/go/src/net/rpc/client.go:322
+pbservice.call(0xc0004167a0, 0x1e, 0x147761e, 0x12, 0x13c66a0, 0xc0004ae000, 0x13c66e0, 0xc000454000, 0x100ac00)
+	/Users/adrianhsu/Google Drive/UCLA_20Spring/CS 134/cs134-assignments/hw2/src/pbservice/client.go:63 +0x160
+pbservice.(*Clerk).PutAppend(0xc0001fdf68, 0x1480312, 0x1, 0xc0004a6000, 0x13, 0x146ef8f, 0x3)
+	/Users/adrianhsu/Google Drive/UCLA_20Spring/CS 134/cs134-assignments/hw2/src/pbservice/client.go:128 +0x1ce
+pbservice.(*Clerk).Put(...)
+	/Users/adrianhsu/Google Drive/UCLA_20Spring/CS 134/cs134-assignments/hw2/src/pbservice/client.go:149
+pbservice.TestConcurrentSame.func1(0xc000117460, 0x1f, 0xc0001076a0, 0x2)
+	/Users/adrianhsu/Google Drive/UCLA_20Spring/CS 134/cs134-assignments/hw2/src/pbservice/test_test.go:366 +0x21f
+created by pbservice.TestConcurrentSame
+	/Users/adrianhsu/Google Drive/UCLA_20Spring/CS 134/cs134-assignments/hw2/src/pbservice/test_test.go:360 +0x325
+
+goroutine 13585 [IO wait, 9 minutes]:
+internal/poll.runtime_pollWait(0x1e51788, 0x72, 0xffffffffffffffff)
+	/usr/local/go/src/runtime/netpoll.go:184 +0x55
+internal/poll.(*pollDesc).wait(0xc000562e18, 0x72, 0x1000, 0x1000, 0xffffffffffffffff)
+	/usr/local/go/src/internal/poll/fd_poll_runtime.go:87 +0x45
+internal/poll.(*pollDesc).waitRead(...)
+	/usr/local/go/src/internal/poll/fd_poll_runtime.go:92
+internal/poll.(*FD).Read(0xc000562e00, 0xc000139000, 0x1000, 0x1000, 0x0, 0x0, 0x0)
+	/usr/local/go/src/internal/poll/fd_unix.go:169 +0x22b
+net.(*netFD).Read(0xc000562e00, 0xc000139000, 0x1000, 0x1000, 0x0, 0x0, 0x0)
+	/usr/local/go/src/net/fd_unix.go:202 +0x4f
+net.(*conn).Read(0xc0001d24e8, 0xc000139000, 0x1000, 0x1000, 0x0, 0x0, 0x0)
+	/usr/local/go/src/net/net.go:184 +0x68
+bufio.(*Reader).Read(0xc000388960, 0xc0001dc780, 0x1, 0x9, 0x114ecdd, 0xc000562f00, 0xc0003dd640)
+	/usr/local/go/src/bufio/bufio.go:226 +0x26a
+io.ReadAtLeast(0x1501be0, 0xc000388960, 0xc0001dc780, 0x1, 0x9, 0x1, 0x1156010, 0xc000562f00, 0x10)
+	/usr/local/go/src/io/io.go:310 +0x87
+io.ReadFull(...)
+	/usr/local/go/src/io/io.go:329
+encoding/gob.decodeUintReader(0x1501be0, 0xc000388960, 0xc0001dc780, 0x9, 0x9, 0x203000, 0x0, 0xc000199c28, 0x203000)
+	/usr/local/go/src/encoding/gob/decode.go:120 +0x6f
+encoding/gob.(*Decoder).recvMessage(0xc000562f00, 0xc0001aa280)
+	/usr/local/go/src/encoding/gob/decoder.go:81 +0x57
+encoding/gob.(*Decoder).decodeTypeSequence(0xc000562f00, 0xc000199c00, 0x100de76)
+	/usr/local/go/src/encoding/gob/decoder.go:143 +0x10c
+encoding/gob.(*Decoder).DecodeValue(0xc000562f00, 0x13c62a0, 0xc0003dd800, 0x16, 0x0, 0x0)
+	/usr/local/go/src/encoding/gob/decoder.go:211 +0x10b
+encoding/gob.(*Decoder).Decode(0xc000562f00, 0x13c62a0, 0xc0003dd800, 0x317c0, 0xc000081158)
+	/usr/local/go/src/encoding/gob/decoder.go:188 +0x16d
+net/rpc.(*gobServerCodec).ReadRequestHeader(0xc0004cb2c0, 0xc0003dd800, 0x13c6760, 0xc000180b10)
+	/usr/local/go/src/net/rpc/server.go:397 +0x45
+net/rpc.(*Server).readRequestHeader(0xc000081130, 0x1509a60, 0xc0004cb2c0, 0xc000180b10, 0x16, 0xc0001aa280, 0x203001, 0x0, 0x0)
+	/usr/local/go/src/net/rpc/server.go:583 +0x67
+net/rpc.(*Server).readRequest(0xc000081130, 0x1509a60, 0xc0004cb2c0, 0xc000081130, 0xc0001dc790, 0xc0001dc7a0, 0xc0002f5e00, 0xc0003dd3c0, 0x13c6720, 0xc0001aa280, ...)
+	/usr/local/go/src/net/rpc/server.go:543 +0x5a
+net/rpc.(*Server).ServeCodec(0xc000081130, 0x1509a60, 0xc0004cb2c0)
+	/usr/local/go/src/net/rpc/server.go:458 +0x97
+net/rpc.(*Server).ServeConn(0xc000081130, 0x1e15068, 0xc0001d24e8)
+	/usr/local/go/src/net/rpc/server.go:449 +0x158
+created by pbservice.StartServer.func1
+	/Users/adrianhsu/Google Drive/UCLA_20Spring/CS 134/cs134-assignments/hw2/src/pbservice/server.go:343 +0x3d0
+
+goroutine 13784 [IO wait, 9 minutes]:
+internal/poll.runtime_pollWait(0x1e51e08, 0x72, 0xffffffffffffffff)
+	/usr/local/go/src/runtime/netpoll.go:184 +0x55
+internal/poll.(*pollDesc).wait(0xc000489698, 0x72, 0x1000, 0x1000, 0xffffffffffffffff)
+	/usr/local/go/src/internal/poll/fd_poll_runtime.go:87 +0x45
+internal/poll.(*pollDesc).waitRead(...)
+	/usr/local/go/src/internal/poll/fd_poll_runtime.go:92
+internal/poll.(*FD).Read(0xc000489680, 0xc0001c3000, 0x1000, 0x1000, 0x0, 0x0, 0x0)
+	/usr/local/go/src/internal/poll/fd_unix.go:169 +0x22b
+net.(*netFD).Read(0xc000489680, 0xc0001c3000, 0x1000, 0x1000, 0x1157932, 0x1490c60, 0xc00012cbd8)
+	/usr/local/go/src/net/fd_unix.go:202 +0x4f
+net.(*conn).Read(0xc000556618, 0xc0001c3000, 0x1000, 0x1000, 0x0, 0x0, 0x0)
+	/usr/local/go/src/net/net.go:184 +0x68
+bufio.(*Reader).Read(0xc00055e660, 0xc00051aa90, 0x1, 0x9, 0x1dfffff, 0x0, 0xc00012cd40)
+	/usr/local/go/src/bufio/bufio.go:226 +0x26a
+io.ReadAtLeast(0x1501be0, 0xc00055e660, 0xc00051aa90, 0x1, 0x9, 0x1, 0x400, 0x1c25c00, 0x1dfffff)
+	/usr/local/go/src/io/io.go:310 +0x87
+io.ReadFull(...)
+	/usr/local/go/src/io/io.go:329
+encoding/gob.decodeUintReader(0x1501be0, 0xc00055e660, 0xc00051aa90, 0x9, 0x9, 0x0, 0x0, 0xc00012ce30, 0x8)
+	/usr/local/go/src/encoding/gob/decode.go:120 +0x6f
+encoding/gob.(*Decoder).recvMessage(0xc000489a00, 0x100de76)
+	/usr/local/go/src/encoding/gob/decoder.go:81 +0x57
+encoding/gob.(*Decoder).decodeTypeSequence(0xc000489a00, 0x203000, 0xc00012cf18)
+	/usr/local/go/src/encoding/gob/decoder.go:143 +0x10c
+encoding/gob.(*Decoder).DecodeValue(0xc000489a00, 0x13c62e0, 0xc00052fcb0, 0x16, 0x0, 0x0)
+	/usr/local/go/src/encoding/gob/decoder.go:211 +0x10b
+encoding/gob.(*Decoder).Decode(0xc000489a00, 0x13c62e0, 0xc00052fcb0, 0xc00012cf01, 0xc00052fcb0)
+	/usr/local/go/src/encoding/gob/decoder.go:188 +0x16d
+net/rpc.(*gobClientCodec).ReadResponseHeader(0xc00052fc50, 0xc00052fcb0, 0x3, 0x3)
+	/usr/local/go/src/net/rpc/client.go:228 +0x45
+net/rpc.(*Client).input(0xc00055e720)
+	/usr/local/go/src/net/rpc/client.go:109 +0xa5
+created by net/rpc.NewClientWithCodec
+	/usr/local/go/src/net/rpc/client.go:206 +0x89
+
+goroutine 13743 [semacquire, 9 minutes]:
+sync.runtime_SemacquireMutex(0xc00032b6fc, 0xc000168900, 0x1)
+	/usr/local/go/src/runtime/sema.go:71 +0x47
+sync.(*Mutex).lockSlow(0xc00032b6f8)
+	/usr/local/go/src/sync/mutex.go:138 +0xfc
+sync.(*Mutex).Lock(...)
+	/usr/local/go/src/sync/mutex.go:81
+sync.(*RWMutex).Lock(0xc00032b6f8)
+	/usr/local/go/src/sync/rwmutex.go:98 +0x97
+pbservice.(*PBServer).PutAppend(0xc00032b6c0, 0xc00051e840, 0xc0004b9730, 0x0, 0x0)
+	/Users/adrianhsu/Google Drive/UCLA_20Spring/CS 134/cs134-assignments/hw2/src/pbservice/server.go:188 +0x5c
+reflect.Value.call(0xc000094600, 0xc0000113f8, 0x13, 0x146f22b, 0x4, 0xc000168f18, 0x3, 0x3, 0x1509a60, 0xc00052e2d0, ...)
+	/usr/local/go/src/reflect/value.go:460 +0x5f6
+reflect.Value.Call(0xc000094600, 0xc0000113f8, 0x13, 0xc00003ff18, 0x3, 0x3, 0xc000148400, 0x28, 0x30)
+	/usr/local/go/src/reflect/value.go:321 +0xb4
+net/rpc.(*service).call(0xc000259d40, 0xc000081130, 0xc00051a358, 0xc00051a370, 0xc0002f5f80, 0xc000518920, 0x13c66a0, 0xc00051e840, 0x16, 0x13c66e0, ...)
+	/usr/local/go/src/net/rpc/server.go:377 +0x16f
+created by net/rpc.(*Server).ServeCodec
+	/usr/local/go/src/net/rpc/server.go:474 +0x42b
+
+goroutine 13741 [IO wait, 9 minutes]:
+internal/poll.runtime_pollWait(0x1e51448, 0x72, 0xffffffffffffffff)
+	/usr/local/go/src/runtime/netpoll.go:184 +0x55
+internal/poll.(*pollDesc).wait(0xc0004d1398, 0x72, 0x1000, 0x1000, 0xffffffffffffffff)
+	/usr/local/go/src/internal/poll/fd_poll_runtime.go:87 +0x45
+internal/poll.(*pollDesc).waitRead(...)
+	/usr/local/go/src/internal/poll/fd_poll_runtime.go:92
+internal/poll.(*FD).Read(0xc0004d1380, 0xc000533000, 0x1000, 0x1000, 0x0, 0x0, 0x0)
+	/usr/local/go/src/internal/poll/fd_unix.go:169 +0x22b
+net.(*netFD).Read(0xc0004d1380, 0xc000533000, 0x1000, 0x1000, 0x1157932, 0x1490c60, 0xc00003fbd8)
+	/usr/local/go/src/net/fd_unix.go:202 +0x4f
+net.(*conn).Read(0xc000500570, 0xc000533000, 0x1000, 0x1000, 0x0, 0x0, 0x0)
+	/usr/local/go/src/net/net.go:184 +0x68
+bufio.(*Reader).Read(0xc00049ade0, 0xc00051a2d0, 0x1, 0x9, 0x100, 0x0, 0xc00003fd40)
+	/usr/local/go/src/bufio/bufio.go:226 +0x26a
+io.ReadAtLeast(0x1501be0, 0xc00049ade0, 0xc00051a2d0, 0x1, 0x9, 0x1, 0x101690f, 0x1c28900, 0x20300000000000)
+	/usr/local/go/src/io/io.go:310 +0x87
+io.ReadFull(...)
+	/usr/local/go/src/io/io.go:329
+encoding/gob.decodeUintReader(0x1501be0, 0xc00049ade0, 0xc00051a2d0, 0x9, 0x9, 0x0, 0x1c28a00, 0xc00003fe30, 0x8)
+	/usr/local/go/src/encoding/gob/decode.go:120 +0x6f
+encoding/gob.(*Decoder).recvMessage(0xc0004d1580, 0x100de76)
+	/usr/local/go/src/encoding/gob/decoder.go:81 +0x57
+encoding/gob.(*Decoder).decodeTypeSequence(0xc0004d1580, 0x203000, 0xc00003ff18)
+	/usr/local/go/src/encoding/gob/decoder.go:143 +0x10c
+encoding/gob.(*Decoder).DecodeValue(0xc0004d1580, 0x13c62e0, 0xc00052e1e0, 0x16, 0x0, 0x0)
+	/usr/local/go/src/encoding/gob/decoder.go:211 +0x10b
+encoding/gob.(*Decoder).Decode(0xc0004d1580, 0x13c62e0, 0xc00052e1e0, 0xc00003ff01, 0xc00052e1e0)
+	/usr/local/go/src/encoding/gob/decoder.go:188 +0x16d
+net/rpc.(*gobClientCodec).ReadResponseHeader(0xc00052e180, 0xc00052e1e0, 0x3, 0x3)
+	/usr/local/go/src/net/rpc/client.go:228 +0x45
+net/rpc.(*Client).input(0xc00049aea0)
+	/usr/local/go/src/net/rpc/client.go:109 +0xa5
+created by net/rpc.NewClientWithCodec
+	/usr/local/go/src/net/rpc/client.go:206 +0x89
+
+goroutine 13781 [semacquire, 9 minutes]:
+sync.runtime_SemacquireMutex(0xc00032b6fc, 0x1156400, 0x1)
+	/usr/local/go/src/runtime/sema.go:71 +0x47
+sync.(*Mutex).lockSlow(0xc00032b6f8)
+	/usr/local/go/src/sync/mutex.go:138 +0xfc
+sync.(*Mutex).Lock(...)
+	/usr/local/go/src/sync/mutex.go:81
+sync.(*RWMutex).Lock(0xc00032b6f8)
+	/usr/local/go/src/sync/rwmutex.go:98 +0x97
+pbservice.(*PBServer).Bootstrapped(0xc00032b6c0, 0xc0004b8600, 0xc0004b86a0, 0x0, 0x0)
+	/Users/adrianhsu/Google Drive/UCLA_20Spring/CS 134/cs134-assignments/hw2/src/pbservice/server.go:45 +0x59
+reflect.Value.call(0xc000094420, 0xc0000113d0, 0x13, 0x146f22b, 0x4, 0xc000053f18, 0x3, 0x3, 0x1509a60, 0xc00026fa10, ...)
+	/usr/local/go/src/reflect/value.go:460 +0x5f6
+reflect.Value.Call(0xc000094420, 0xc0000113d0, 0x13, 0xc00012ff18, 0x3, 0x3, 0xc000284000, 0x28, 0x30)
+	/usr/local/go/src/reflect/value.go:321 +0xb4
+net/rpc.(*service).call(0xc000259d40, 0xc000081130, 0xc0001dc8f8, 0xc0001dc920, 0xc0002f5d80, 0xc0003dd8a0, 0x13c64e0, 0xc0004b8600, 0x16, 0x13c6520, ...)
+	/usr/local/go/src/net/rpc/server.go:377 +0x16f
+created by net/rpc.(*Server).ServeCodec
+	/usr/local/go/src/net/rpc/server.go:474 +0x42b
+
+goroutine 13751 [chan receive, 9 minutes]:
+net/rpc.(*Client).Call(...)
+	/usr/local/go/src/net/rpc/client.go:322
+pbservice.call(0xc00041eac0, 0x1e, 0x14764c1, 0x10, 0x143c320, 0xc0001aa1e0, 0x13c6760, 0xc000455e00, 0x0)
+	/Users/adrianhsu/Google Drive/UCLA_20Spring/CS 134/cs134-assignments/hw2/src/pbservice/client.go:63 +0x160
+pbservice.(*PBServer).PutAppend(0xc00032b6c0, 0xc0004c3040, 0xc000455a30, 0x0, 0x0)
+	/Users/adrianhsu/Google Drive/UCLA_20Spring/CS 134/cs134-assignments/hw2/src/pbservice/server.go:216 +0x3c9
+reflect.Value.call(0xc000094600, 0xc0000113f8, 0x13, 0x146f22b, 0x4, 0xc000202f18, 0x3, 0x3, 0x1509a60, 0xc0004e2a50, ...)
+	/usr/local/go/src/reflect/value.go:460 +0x5f6
+reflect.Value.Call(0xc000094600, 0xc0000113f8, 0x13, 0xc000129f18, 0x3, 0x3, 0xc000148000, 0x28, 0x30)
+	/usr/local/go/src/reflect/value.go:321 +0xb4
+net/rpc.(*service).call(0xc000259d40, 0xc000081130, 0xc0004a2898, 0xc0004a28b0, 0xc0002f5f80, 0xc000473e60, 0x13c66a0, 0xc0004c3040, 0x16, 0x13c66e0, ...)
+	/usr/local/go/src/net/rpc/server.go:377 +0x16f
+created by net/rpc.(*Server).ServeCodec
+	/usr/local/go/src/net/rpc/server.go:474 +0x42b
+
+goroutine 13785 [IO wait, 9 minutes]:
+internal/poll.runtime_pollWait(0x1e51ac8, 0x72, 0xffffffffffffffff)
+	/usr/local/go/src/runtime/netpoll.go:184 +0x55
+internal/poll.(*pollDesc).wait(0xc000489b18, 0x72, 0x1000, 0x1000, 0xffffffffffffffff)
+	/usr/local/go/src/internal/poll/fd_poll_runtime.go:87 +0x45
+internal/poll.(*pollDesc).waitRead(...)
+	/usr/local/go/src/internal/poll/fd_poll_runtime.go:92
+internal/poll.(*FD).Read(0xc000489b00, 0xc0001c5000, 0x1000, 0x1000, 0x0, 0x0, 0x0)
+	/usr/local/go/src/internal/poll/fd_unix.go:169 +0x22b
+net.(*netFD).Read(0xc000489b00, 0xc0001c5000, 0x1000, 0x1000, 0x0, 0x0, 0x0)
+	/usr/local/go/src/net/fd_unix.go:202 +0x4f
+net.(*conn).Read(0xc000556628, 0xc0001c5000, 0x1000, 0x1000, 0x0, 0x0, 0x0)
+	/usr/local/go/src/net/net.go:184 +0x68
+bufio.(*Reader).Read(0xc00055e7e0, 0xc00051aaf0, 0x1, 0x9, 0x114ecdd, 0xc000489c00, 0xc0004bfb80)
+	/usr/local/go/src/bufio/bufio.go:226 +0x26a
+io.ReadAtLeast(0x1501be0, 0xc00055e7e0, 0xc00051aaf0, 0x1, 0x9, 0x1, 0x1156010, 0xc000489c00, 0x10)
+	/usr/local/go/src/io/io.go:310 +0x87
+io.ReadFull(...)
+	/usr/local/go/src/io/io.go:329
+encoding/gob.decodeUintReader(0x1501be0, 0xc00055e7e0, 0xc00051aaf0, 0x9, 0x9, 0x203000, 0x0, 0xc0001cfc28, 0x203000)
+	/usr/local/go/src/encoding/gob/decode.go:120 +0x6f
+encoding/gob.(*Decoder).recvMessage(0xc000489c00, 0xc0004b8c70)
+	/usr/local/go/src/encoding/gob/decoder.go:81 +0x57
+encoding/gob.(*Decoder).decodeTypeSequence(0xc000489c00, 0xc0001cfc00, 0x100de76)
+	/usr/local/go/src/encoding/gob/decoder.go:143 +0x10c
+encoding/gob.(*Decoder).DecodeValue(0xc000489c00, 0x13c62a0, 0xc0003a40e0, 0x16, 0x0, 0x0)
+	/usr/local/go/src/encoding/gob/decoder.go:211 +0x10b
+encoding/gob.(*Decoder).Decode(0xc000489c00, 0x13c62a0, 0xc0003a40e0, 0x31640, 0xc0000811f8)
+	/usr/local/go/src/encoding/gob/decoder.go:188 +0x16d
+net/rpc.(*gobServerCodec).ReadRequestHeader(0xc00052fda0, 0xc0003a40e0, 0x13c65e0, 0xc0003a40c0)
+	/usr/local/go/src/net/rpc/server.go:397 +0x45
+net/rpc.(*Server).readRequestHeader(0xc0000811d0, 0x1509a60, 0xc00052fda0, 0xc0003a40c0, 0x16, 0xc0004b8c70, 0x203001, 0x0, 0x0)
+	/usr/local/go/src/net/rpc/server.go:583 +0x67
+net/rpc.(*Server).readRequest(0xc0000811d0, 0x1509a60, 0xc00052fda0, 0xc0000811d0, 0xc00051aae8, 0xc00051ab00, 0xc000350380, 0xc0001043c0, 0x13c65a0, 0xc0004b8c70, ...)
+	/usr/local/go/src/net/rpc/server.go:543 +0x5a
+net/rpc.(*Server).ServeCodec(0xc0000811d0, 0x1509a60, 0xc00052fda0)
+	/usr/local/go/src/net/rpc/server.go:458 +0x97
+net/rpc.(*Server).ServeConn(0xc0000811d0, 0x1e15068, 0xc000556628)
+	/usr/local/go/src/net/rpc/server.go:449 +0x158
+created by pbservice.StartServer.func1
+	/Users/adrianhsu/Google Drive/UCLA_20Spring/CS 134/cs134-assignments/hw2/src/pbservice/server.go:343 +0x3d0
+exit status 2
+FAIL	pbservice	600.533s
 Test: Single primary, no backup ...
   ... Passed
 Test: Add a backup ...
@@ -318,11 +1131,18 @@ Test: Concurrent Put()s to the same key; unreliable ...
   ... Passed
 Test: Repeated failures/restarts ...
 GetTest: NOT THE PRIMARY YET
+GetTest: NOT THE PRIMARY YET
+GetTest: NOT THE PRIMARY YET
+GetTest: NOT THE PRIMARY YET
 ForwardTest: SENDER IS NOT CURRENT PRIMARY
+GetTest: NOT THE PRIMARY YET
 GetTest: NOT THE PRIMARY YET
   ... Put/Gets done ... 
   ... Passed
 Test: Repeated failures/restarts with concurrent updates to same key; unreliable ...
+ForwardTest: SENDER IS NOT CURRENT PRIMARY
+ForwardTest: SENDER IS NOT CURRENT PRIMARY
+ForwardTest: SENDER IS NOT CURRENT PRIMARY
 ForwardTest: SENDER IS NOT CURRENT PRIMARY
   ... Appends done ... 
   ... Passed
@@ -333,85 +1153,4 @@ Test: Partitioned old primary does not complete Gets ...
 GetTest: NOT THE PRIMARY YET
   ... Passed
 PASS
-ok  	pbservice	111.632s
-Test: Single primary, no backup ...
-  ... Passed
-Test: Add a backup ...
-  ... Passed
-Test: Count RPCs to viewserver ...
-  ... Passed
-Test: Primary failure ...
-  ... Passed
-Test: Kill last server, new one should not be active ...
-  ... Passed
-Test: at-most-once Append; unreliable ...
-  ... Passed
-Test: Put() immediately after backup failure ...
-  ... Passed
-Test: Put() immediately after primary failure ...
-  ... Passed
-Test: Concurrent Put()s to the same key ...
-  ... Passed
-Test: Concurrent Append()s to the same key ...
-  ... Passed
-Test: Concurrent Put()s to the same key; unreliable ...
-  ... Passed
-Test: Repeated failures/restarts ...
-GetTest: NOT THE PRIMARY YET
-ForwardTest: SENDER IS NOT CURRENT PRIMARY
-GetTest: NOT THE PRIMARY YET
-GetTest: NOT THE PRIMARY YET
-  ... Put/Gets done ... 
-  ... Passed
-Test: Repeated failures/restarts with concurrent updates to same key; unreliable ...
-ForwardTest: SENDER IS NOT CURRENT PRIMARY
-  ... Appends done ... 
-  ... Passed
-Test: Old primary does not serve Gets ...
-GetTest: NOT THE PRIMARY YET
-  ... Passed
-Test: Partitioned old primary does not complete Gets ...
-GetTest: NOT THE PRIMARY YET
-  ... Passed
-PASS
-ok  	pbservice	111.468s
-Test: Single primary, no backup ...
-  ... Passed
-Test: Add a backup ...
-  ... Passed
-Test: Count RPCs to viewserver ...
-  ... Passed
-Test: Primary failure ...
-  ... Passed
-Test: Kill last server, new one should not be active ...
-  ... Passed
-Test: at-most-once Append; unreliable ...
-  ... Passed
-Test: Put() immediately after backup failure ...
-  ... Passed
-Test: Put() immediately after primary failure ...
-  ... Passed
-Test: Concurrent Put()s to the same key ...
-  ... Passed
-Test: Concurrent Append()s to the same key ...
-  ... Passed
-Test: Concurrent Put()s to the same key; unreliable ...
-  ... Passed
-Test: Repeated failures/restarts ...
-GetTest: NOT THE PRIMARY YET
-GetTest: NOT THE PRIMARY YET
-ForwardTest: SENDER IS NOT CURRENT PRIMARY
-ForwardTest: SENDER IS NOT CURRENT PRIMARY
-  ... Put/Gets done ... 
-  ... Passed
-Test: Repeated failures/restarts with concurrent updates to same key; unreliable ...
-  ... Appends done ... 
-  ... Passed
-Test: Old primary does not serve Gets ...
-GetTest: NOT THE PRIMARY YET
-  ... Passed
-Test: Partitioned old primary does not complete Gets ...
-GetTest: NOT THE PRIMARY YET
-  ... Passed
-PASS
-ok  	pbservice	112.391s
+ok  	pbservice	112.045s
