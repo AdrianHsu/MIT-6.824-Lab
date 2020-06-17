@@ -50,6 +50,17 @@ type GetReply struct {
 	Value string
 }
 
+type GetSyncArgs struct {
+	Key string
+	// You'll have to add definitions here.
+	Primary string
+}
+
+type GetSyncReply struct {
+	Err   Err
+	Value string
+}
+
 // Your RPC definitions here.
 type BootstrapArgs struct {
 	Database map[string]string

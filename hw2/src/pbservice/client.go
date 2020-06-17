@@ -90,7 +90,9 @@ func (ck *Clerk) Get(key string) string {
 	var reply GetReply
 	ok := false
 	for ok == false {
+		//log.Printf("%v start %v", ck.currPrimary, args.Key)
 		ok := call(ck.currPrimary, "PBServer.Get", args, &reply)
+		//log.Printf("%v end %v", ck.currPrimary, args.Key)
 		if ok {
 			break
 		} else {

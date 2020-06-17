@@ -195,7 +195,7 @@ func Test1(t *testing.T) {
 		for i := 0; i < DeadPings*3; i++ {
 			v0, _ := ck1.Ping(0) // now ck1 ias assignRole(). v is changed to 6 -> 7 {ck3, ck1}
 			v1, _ := ck3.Ping(vx.Viewnum)
-			log.Printf("%v, %v", v0.Viewnum, v1.Viewnum) // they both are {7, ck3, ck1}
+			//log.Printf("%v, %v", v0.Viewnum, v1.Viewnum) // they both are {7, ck3, ck1}
 			v, _ := ck1.Get() // v = 7, {ck3, ck1}
 			if v.Viewnum > vx.Viewnum { // 7 > 6
 				break

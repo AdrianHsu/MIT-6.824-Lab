@@ -43,13 +43,13 @@ type PBServer struct {
 func (pb *PBServer) Bootstrapped(args *BootstrapArgs, reply *BootstrapReply) error {
 
 	pb.rwm.Lock()
+	defer pb.rwm.Unlock()
 	for k, v := range args.Database {
 		pb.database[k] = v
 	}
 	for k, v := range args.HashVals {
 		pb.hashVals[k] = v
 	}
-	pb.rwm.Unlock()
 	return nil
 }
 
@@ -73,23 +73,88 @@ func (pb *PBServer) Bootstrapping(backup string) error {
 	return nil
 }
 
+func (pb *PBServer) ForwardGet(sargs *GetSyncArgs, sreply *GetSyncReply) error {
+
+	pb.rwm.Lock()
+	defer pb.rwm.Unlock()
+
+	if sargs.Primary != pb.currview.Primary {
+		// the backup first need to check if the primary is still the current primary
+		// the caller is not primary anymore
+		sreply.Err = "ForwardTest: SENDER IS NOT CURRENT PRIMARY"
+		return errors.New("ForwardTest: SENDER IS NOT CURRENT PRIMARY")
+	} else {
+		sreply.Value = pb.database[sargs.Key]
+		//log.Printf("backup: %v", sreply.Value)
+	}
+	return nil
+}
+
 func (pb *PBServer) Get(args *GetArgs, reply *GetReply) error {
 
 	// Your code here.
 	pb.rwm.Lock()
+	defer pb.rwm.Unlock()
+	if pb.me != pb.currview.Primary {
+		reply.Err = "Get: NOT THE PRIMARY YET"
+		// e.g., (p1, p3) -> (p3, _)
+		// client: already know that p3 is now the new primary
+		// p3: according to its cache, it still think (p1, p3) -> still dont think it is the primary
+		// p3: wait for tick() until it knows (p3, _) and solved
+
+		// the backup (at least it thought by itself) should reject a direct client request
+		return errors.New("GetTest: NOT THE PRIMARY YET")
+	}
+
+
 	reply.Value = pb.database[args.Key]
-	pb.rwm.Unlock()
+
+	sargs := GetSyncArgs{args.Key,pb.me}
+	sreply := GetSyncReply{}
+
+	ok := pb.currview.Backup == ""
+
+	for ok == false {
+		//log.Printf("b get %v, %v, %v", pb.me, pb.currview.Backup, sargs.Key)
+		ok = call(pb.currview.Backup, "PBServer.ForwardGet", sargs, &sreply)
+		//log.Printf("get %v, %v, %v", pb.me, pb.currview.Backup, sargs.Key)
+		if ok == true {
+			// everything works well
+			if sreply.Value != reply.Value {
+				reply.Err = "GetTest: VALUE MISMATCH"
+				return errors.New("GetTest: VALUE MISMATCH") // don't need to update anymore
+			}
+			break
+		} else {
+			// case 1. you are no longer the primary
+			if sreply.Err == "ForwardTest: SENDER IS NOT CURRENT PRIMARY" {
+				reply.Err = sreply.Err
+				return errors.New("GetTest: SENDER IS NOT CURRENT PRIMARY") // don't need to update anymore
+ 			}
+
+			time.Sleep(viewservice.PingInterval)
+			// case 2. check if the backup was still alive
+
+			// perform exactly the same as tick() But cannot call it directly as we will acquire lock twice
+			newview, _ := pb.vs.Ping(pb.currview.Viewnum)
+			//log.Printf("v=%v, p=%v, b=%v", newview.Viewnum, newview.Primary, newview.Backup)
+			pb.checkNewBackup(newview)
+			pb.changeView(newview)
+
+			ok = pb.currview.Backup == ""
+		}
+	}
+
 	return nil
 }
 
 func (pb *PBServer) Update(key string, value string, op string, hashVal int64) {
+
 	if op == "Put" {
 		pb.database[key] = value
 	} else if op == "Append" {
-
 		// detect duplicates
 		if pb.hashVals[hashVal] != true {
-
 			// Append should use an empty string for the previous value
 			// if the key doesn't exist
 			pb.database[key] += value
@@ -97,22 +162,20 @@ func (pb *PBServer) Update(key string, value string, op string, hashVal int64) {
 		}
 	}
 }
+
 // edited by Adrian
 // to leverage determinism of the state machine
 // forward any state necessary for backup to `mimic` the execution
 func (pb *PBServer) Forward(sargs *PutAppendSyncArgs, sreply *PutAppendSyncReply) error {
 
 	pb.rwm.Lock()
-	// defer statement defers the execution of a function until the surrounding function returns.
-	// to make sure that when I'm doing Forward for my backup, my own map will not be modified by others.
-	// Update() is included by `defer`
 	defer pb.rwm.Unlock()
 
 	if sargs.Primary != pb.currview.Primary {
 		// the backup first need to check if the primary is still the current primary
 		// the caller is not primary anymore
-		sreply.Err = "ForwardTest: NOT CURRENT PRIMARY"
-		return errors.New("ForwardTest: NOT CURRENT PRIMARY")
+		sreply.Err = "ForwardTest: SENDER IS NOT CURRENT PRIMARY"
+		return errors.New("ForwardTest: SENDER IS NOT CURRENT PRIMARY")
 	} else {
 		pb.Update(sargs.Key, sargs.Value, sargs.Op, sargs.HashVal)
 	}
@@ -123,9 +186,6 @@ func (pb *PBServer) PutAppend(args *PutAppendArgs, reply *PutAppendReply) error 
 
 	// Your code here.
 	pb.rwm.Lock()
-	// defer statement defers the execution of a function until the surrounding function returns.
-	// to make sure that when I'm doing Forward for my backup, my own map will not be modified by others.
-	// Update() is included by `defer`
 	defer pb.rwm.Unlock()
 
 	if pb.me != pb.currview.Primary {
@@ -138,8 +198,6 @@ func (pb *PBServer) PutAppend(args *PutAppendArgs, reply *PutAppendReply) error 
 		// the backup (at least it thought by itself) should reject a direct client request
 		return errors.New("PutAppend: NOT THE PRIMARY YET")
 	}
-
-
 
 	// Step 1. Update Primary itself
 	pb.Update(args.Key, args.Value, args.Op, args.HashVal)
@@ -154,21 +212,23 @@ func (pb *PBServer) PutAppend(args *PutAppendArgs, reply *PutAppendReply) error 
 	ok := pb.currview.Backup == "" // if there is no backup currently -> don't do Forward
 
 	for ok == false {
+		//log.Printf("b put %v, %v, %v", pb.me, pb.currview.Backup, sargs.Key)
 		ok = call(pb.currview.Backup, "PBServer.Forward", sargs, &sreply)
-		//log.Printf("%v", ok)
+		//log.Printf("put %v, %v, %v", pb.me, pb.currview.Backup, sargs.Key)
 		if ok == true {
 			// everything works fine
 			break
 		} else {
 			// case 1. you are no longer the primary
-			if sreply.Err == "ForwardTest: NOT CURRENT PRIMARY" {
+			if sreply.Err == "ForwardTest: SENDER IS NOT CURRENT PRIMARY" {
 				reply.Err = sreply.Err
-				return errors.New("PutAppendTest: NOT CURRENT PRIMARY") // don't need to update anymore
+				return errors.New("PutAppendTest: SENDER NOT CURRENT PRIMARY") // don't need to update anymore
 			}
+
 			time.Sleep(viewservice.PingInterval)
 			// case 2. check if the backup was still alive
 
-			// exactly the same as tick() But cannot call it directly as we will acquire lock twice
+			// perform exactly the same as tick() But cannot call it directly as we will acquire lock twice
 			newview, _ := pb.vs.Ping(pb.currview.Viewnum)
 			//log.Printf("v=%v, p=%v, b=%v", newview.Viewnum, newview.Primary, newview.Backup)
 			pb.checkNewBackup(newview)
@@ -210,7 +270,7 @@ func (pb *PBServer) tick() {
 	pb.rwm.Lock()
 	defer pb.rwm.Unlock()
 	newview, _ := pb.vs.Ping(pb.currview.Viewnum)
-	//log.Printf("v=%v, p=%v, b=%v", newview.Viewnum, newview.Primary, newview.Backup)
+	//log.Printf("me=%v, v=%v, p=%v, b=%v", pb.me, newview.Viewnum, newview.Primary, newview.Backup)
 	pb.checkNewBackup(newview)
 	pb.changeView(newview)
 }

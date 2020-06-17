@@ -735,6 +735,7 @@ func TestRepeatedCrash(t *testing.T) {
 				wanted, ok := data[k]
 				if ok {
 					v := ck.Get(k)
+					//log.Printf("goroutine: %v", v)
 					if v != wanted {
 						t.Fatalf("key=%v wanted=%v got=%v", k, wanted, v)
 					}
@@ -1028,11 +1029,11 @@ func TestPartition1(t *testing.T) {
 
 	// wait for the background Get to s1 to be delivered.
 	select {
-	case x := <-stale_get:
-		if x {
-			t.Fatalf("Get to old primary succeeded and produced stale value")
-		}
-	case <-time.After(5 * time.Second):
+		case x := <-stale_get:
+			if x {
+				t.Fatalf("Get to old primary succeeded and produced stale value")
+			}
+		case <-time.After(5 * time.Second):
 	}
 
 	check(ck2, "a", "111")
