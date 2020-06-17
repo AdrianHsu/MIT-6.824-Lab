@@ -193,9 +193,8 @@ func Test1(t *testing.T) {
 		// but do not ack
 		vx, _ := ck1.Get() // vx = {6, ck3, _} -> ck1 is not even in the set!!
 		for i := 0; i < DeadPings*3; i++ {
-			v0, _ := ck1.Ping(0) // now ck1 ias assignRole(). v is changed to 6 -> 7 {ck3, ck1}
-			v1, _ := ck3.Ping(vx.Viewnum)
-			//log.Printf("%v, %v", v0.Viewnum, v1.Viewnum) // they both are {7, ck3, ck1}
+			ck1.Ping(0) // now ck1 ias assignRole(). v is changed to 6 -> 7 {ck3, ck1}
+			ck3.Ping(vx.Viewnum)
 			v, _ := ck1.Get() // v = 7, {ck3, ck1}
 			if v.Viewnum > vx.Viewnum { // 7 > 6
 				break
