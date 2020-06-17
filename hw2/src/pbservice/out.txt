@@ -1,17 +1,445 @@
-2020/06/16 22:10:49 rpc.Register: method "GetRPCCount" has 1 input parameters; needs exactly three
-2020/06/16 22:10:49 rpc.Register: method "Kill" has 1 input parameters; needs exactly three
+2020/06/16 22:21:42 rpc.Register: method "GetRPCCount" has 1 input parameters; needs exactly three
+2020/06/16 22:21:42 rpc.Register: method "Kill" has 1 input parameters; needs exactly three
 Test: Single primary, no backup ...
-2020/06/16 22:10:50 rpc.Register: method "Bootstrapping" has 2 input parameters; needs exactly three
-2020/06/16 22:10:50 rpc.Register: method "Update" has 5 input parameters; needs exactly three
+2020/06/16 22:21:43 rpc.Register: method "Bootstrapping" has 2 input parameters; needs exactly three
+2020/06/16 22:21:43 rpc.Register: method "Update" has 5 input parameters; needs exactly three
   ... Passed
 Test: Add a backup ...
-2020/06/16 22:10:51 rpc.Register: method "Bootstrapping" has 2 input parameters; needs exactly three
-2020/06/16 22:10:51 rpc.Register: method "Update" has 5 input parameters; needs exactly three
+2020/06/16 22:21:44 rpc.Register: method "Bootstrapping" has 2 input parameters; needs exactly three
+2020/06/16 22:21:44 rpc.Register: method "Update" has 5 input parameters; needs exactly three
   ... Passed
 Test: Count RPCs to viewserver ...
   ... Passed
 Test: Primary failure ...
   ... Passed
 Test: Kill last server, new one should not be active ...
-2020/06/16 22:10:52 rpc.Register: method "Bootstrapping" has 2 input parameters; needs exactly three
-2020/06/16 22:10:52 rpc.Register: method "Update" has 5 input parameters; needs exactly three
+2020/06/16 22:21:45 rpc.Register: method "Bootstrapping" has 2 input parameters; needs exactly three
+2020/06/16 22:21:45 rpc.Register: method "Update" has 5 input parameters; needs exactly three
+  ... Passed
+2020/06/16 22:21:50 rpc.Register: method "GetRPCCount" has 1 input parameters; needs exactly three
+2020/06/16 22:21:50 rpc.Register: method "Kill" has 1 input parameters; needs exactly three
+Test: at-most-once Append; unreliable ...
+2020/06/16 22:21:51 rpc.Register: method "Bootstrapping" has 2 input parameters; needs exactly three
+2020/06/16 22:21:51 rpc.Register: method "Update" has 5 input parameters; needs exactly three
+unexpected EOF
+unexpected EOF
+write unix ->/var/tmp/824-502/pb-95222-tamo-1: write: broken pipe
+write unix ->/var/tmp/824-502/pb-95222-tamo-1: write: broken pipe
+unexpected EOF
+write unix ->/var/tmp/824-502/pb-95222-tamo-1: write: broken pipe
+unexpected EOF
+unexpected EOF
+write unix ->/var/tmp/824-502/pb-95222-tamo-1: write: broken pipe
+unexpected EOF
+write unix ->/var/tmp/824-502/pb-95222-tamo-1: write: broken pipe
+unexpected EOF
+write unix ->/var/tmp/824-502/pb-95222-tamo-1: write: broken pipe
+unexpected EOF
+unexpected EOF
+unexpected EOF
+write unix ->/var/tmp/824-502/pb-95222-tamo-1: write: broken pipe
+write unix ->/var/tmp/824-502/pb-95222-tamo-1: write: broken pipe
+unexpected EOF
+unexpected EOF
+unexpected EOF
+write unix ->/var/tmp/824-502/pb-95222-tamo-1: write: broken pipe
+unexpected EOF
+write unix ->/var/tmp/824-502/pb-95222-tamo-1: write: broken pipe
+write unix ->/var/tmp/824-502/pb-95222-tamo-1: write: broken pipe
+unexpected EOF
+unexpected EOF
+write unix ->/var/tmp/824-502/pb-95222-tamo-1: write: broken pipe
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+write unix ->/var/tmp/824-502/pb-95222-tamo-1: write: broken pipe
+  ... Passed
+2020/06/16 22:21:58 rpc.Register: method "GetRPCCount" has 1 input parameters; needs exactly three
+2020/06/16 22:21:58 rpc.Register: method "Kill" has 1 input parameters; needs exactly three
+2020/06/16 22:21:59 rpc.Register: method "Bootstrapping" has 2 input parameters; needs exactly three
+2020/06/16 22:21:59 rpc.Register: method "Update" has 5 input parameters; needs exactly three
+2020/06/16 22:22:00 rpc.Register: method "Bootstrapping" has 2 input parameters; needs exactly three
+2020/06/16 22:22:00 rpc.Register: method "Update" has 5 input parameters; needs exactly three
+2020/06/16 22:22:01 rpc.Register: method "Bootstrapping" has 2 input parameters; needs exactly three
+2020/06/16 22:22:01 rpc.Register: method "Update" has 5 input parameters; needs exactly three
+Test: Put() immediately after backup failure ...
+  ... Passed
+Test: Put() immediately after primary failure ...
+PutAppend: NOT THE PRIMARY YET
+  ... Passed
+2020/06/16 22:22:06 rpc.Register: method "GetRPCCount" has 1 input parameters; needs exactly three
+2020/06/16 22:22:06 rpc.Register: method "Kill" has 1 input parameters; needs exactly three
+Test: Concurrent Put()s to the same key ...
+2020/06/16 22:22:07 rpc.Register: method "Bootstrapping" has 2 input parameters; needs exactly three
+2020/06/16 22:22:07 rpc.Register: method "Update" has 5 input parameters; needs exactly three
+2020/06/16 22:22:07 rpc.Register: method "Bootstrapping" has 2 input parameters; needs exactly three
+2020/06/16 22:22:07 rpc.Register: method "Update" has 5 input parameters; needs exactly three
+  ... Passed
+2020/06/16 22:22:16 rpc.Register: method "GetRPCCount" has 1 input parameters; needs exactly three
+2020/06/16 22:22:16 rpc.Register: method "Kill" has 1 input parameters; needs exactly three
+Test: Concurrent Append()s to the same key ...
+2020/06/16 22:22:17 rpc.Register: method "Bootstrapping" has 2 input parameters; needs exactly three
+2020/06/16 22:22:17 rpc.Register: method "Update" has 5 input parameters; needs exactly three
+2020/06/16 22:22:17 rpc.Register: method "Bootstrapping" has 2 input parameters; needs exactly three
+2020/06/16 22:22:17 rpc.Register: method "Update" has 5 input parameters; needs exactly three
+  ... Passed
+2020/06/16 22:22:21 rpc.Register: method "GetRPCCount" has 1 input parameters; needs exactly three
+2020/06/16 22:22:21 rpc.Register: method "Kill" has 1 input parameters; needs exactly three
+Test: Concurrent Put()s to the same key; unreliable ...
+2020/06/16 22:22:22 rpc.Register: method "Bootstrapping" has 2 input parameters; needs exactly three
+2020/06/16 22:22:22 rpc.Register: method "Update" has 5 input parameters; needs exactly three
+2020/06/16 22:22:22 rpc.Register: method "Bootstrapping" has 2 input parameters; needs exactly three
+2020/06/16 22:22:22 rpc.Register: method "Update" has 5 input parameters; needs exactly three
+unexpected EOF
+unexpected EOF
+write unix ->/var/tmp/824-502/pb-95222-csu-2: write: broken pipe
+unexpected EOF
+write unix ->/var/tmp/824-502/pb-95222-csu-2: write: broken pipe
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+write unix ->/var/tmp/824-502/pb-95222-csu-1: write: broken pipe
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+write unix ->/var/tmp/824-502/pb-95222-csu-1: write: broken pipe
+write unix ->/var/tmp/824-502/pb-95222-csu-1: write: broken pipe
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+write unix ->/var/tmp/824-502/pb-95222-csu-2: write: broken pipe
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+write unix ->/var/tmp/824-502/pb-95222-csu-1: write: broken pipe
+write unix ->/var/tmp/824-502/pb-95222-csu-1: write: broken pipe
+write unix ->/var/tmp/824-502/pb-95222-csu-2: write: broken pipe
+write unix ->/var/tmp/824-502/pb-95222-csu-2: write: broken pipe
+write unix ->/var/tmp/824-502/pb-95222-csu-1: write: broken pipe
+write unix ->/var/tmp/824-502/pb-95222-csu-1: write: broken pipe
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+write unix ->/var/tmp/824-502/pb-95222-csu-1: write: broken pipe
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+write unix ->/var/tmp/824-502/pb-95222-csu-2: write: broken pipe
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+write unix ->/var/tmp/824-502/pb-95222-csu-1: write: broken pipe
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+write unix ->/var/tmp/824-502/pb-95222-csu-2: write: broken pipe
+write unix ->/var/tmp/824-502/pb-95222-csu-1: write: broken pipe
+unexpected EOF
+write unix ->/var/tmp/824-502/pb-95222-csu-1: write: broken pipe
+unexpected EOF
+unexpected EOF
+unexpected EOF
+write unix ->/var/tmp/824-502/pb-95222-csu-2: write: broken pipe
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+  ... Passed
+2020/06/16 22:22:31 rpc.Register: method "GetRPCCount" has 1 input parameters; needs exactly three
+2020/06/16 22:22:31 rpc.Register: method "Kill" has 1 input parameters; needs exactly three
+Test: Repeated failures/restarts ...
+2020/06/16 22:22:32 rpc.Register: method "Bootstrapping" has 2 input parameters; needs exactly three
+2020/06/16 22:22:32 rpc.Register: method "Update" has 5 input parameters; needs exactly three
+2020/06/16 22:22:32 rpc.Register: method "Bootstrapping" has 2 input parameters; needs exactly three
+2020/06/16 22:22:32 rpc.Register: method "Update" has 5 input parameters; needs exactly three
+2020/06/16 22:22:32 rpc.Register: method "Bootstrapping" has 2 input parameters; needs exactly three
+2020/06/16 22:22:32 rpc.Register: method "Update" has 5 input parameters; needs exactly three
+2020/06/16 22:22:33 rpc.Register: method "Bootstrapping" has 2 input parameters; needs exactly three
+2020/06/16 22:22:33 rpc.Register: method "Update" has 5 input parameters; needs exactly three
+ForwardTest: SENDER IS NOT CURRENT PRIMARY
+2020/06/16 22:22:35 rpc.Register: method "Bootstrapping" has 2 input parameters; needs exactly three
+2020/06/16 22:22:35 rpc.Register: method "Update" has 5 input parameters; needs exactly three
+2020/06/16 22:22:37 rpc.Register: method "Bootstrapping" has 2 input parameters; needs exactly three
+2020/06/16 22:22:37 rpc.Register: method "Update" has 5 input parameters; needs exactly three
+2020/06/16 22:22:39 rpc.Register: method "Bootstrapping" has 2 input parameters; needs exactly three
+2020/06/16 22:22:39 rpc.Register: method "Update" has 5 input parameters; needs exactly three
+2020/06/16 22:22:41 rpc.Register: method "Bootstrapping" has 2 input parameters; needs exactly three
+2020/06/16 22:22:41 rpc.Register: method "Update" has 5 input parameters; needs exactly three
+2020/06/16 22:22:43 rpc.Register: method "Bootstrapping" has 2 input parameters; needs exactly three
+2020/06/16 22:22:43 rpc.Register: method "Update" has 5 input parameters; needs exactly three
+ForwardTest: SENDER IS NOT CURRENT PRIMARY
+2020/06/16 22:22:45 rpc.Register: method "Bootstrapping" has 2 input parameters; needs exactly three
+2020/06/16 22:22:45 rpc.Register: method "Update" has 5 input parameters; needs exactly three
+2020/06/16 22:22:47 rpc.Register: method "Bootstrapping" has 2 input parameters; needs exactly three
+2020/06/16 22:22:47 rpc.Register: method "Update" has 5 input parameters; needs exactly three
+2020/06/16 22:22:49 rpc.Register: method "Bootstrapping" has 2 input parameters; needs exactly three
+2020/06/16 22:22:49 rpc.Register: method "Update" has 5 input parameters; needs exactly three
+2020/06/16 22:22:51 rpc.Register: method "Bootstrapping" has 2 input parameters; needs exactly three
+2020/06/16 22:22:51 rpc.Register: method "Update" has 5 input parameters; needs exactly three
+  ... Put/Gets done ... 
+  ... Passed
+2020/06/16 22:22:54 rpc.Register: method "GetRPCCount" has 1 input parameters; needs exactly three
+2020/06/16 22:22:54 rpc.Register: method "Kill" has 1 input parameters; needs exactly three
+Test: Repeated failures/restarts with concurrent updates to same key; unreliable ...
+2020/06/16 22:22:55 rpc.Register: method "Bootstrapping" has 2 input parameters; needs exactly three
+2020/06/16 22:22:55 rpc.Register: method "Update" has 5 input parameters; needs exactly three
+2020/06/16 22:22:55 rpc.Register: method "Bootstrapping" has 2 input parameters; needs exactly three
+2020/06/16 22:22:55 rpc.Register: method "Update" has 5 input parameters; needs exactly three
+2020/06/16 22:22:55 rpc.Register: method "Bootstrapping" has 2 input parameters; needs exactly three
+2020/06/16 22:22:55 rpc.Register: method "Update" has 5 input parameters; needs exactly three
+unexpected EOF
+unexpected EOF
+write unix ->/var/tmp/824-502/pb-95222-rcu-1: write: broken pipe
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+write unix ->/var/tmp/824-502/pb-95222-rcu-2: write: broken pipe
+unexpected EOF
+unexpected EOF
+2020/06/16 22:22:57 rpc.Register: method "Bootstrapping" has 2 input parameters; needs exactly three
+2020/06/16 22:22:57 rpc.Register: method "Update" has 5 input parameters; needs exactly three
+write unix ->/var/tmp/824-502/pb-95222-rcu-1: write: broken pipe
+unexpected EOF
+unexpected EOF
+write unix ->/var/tmp/824-502/pb-95222-rcu-1: write: broken pipe
+write unix ->/var/tmp/824-502/pb-95222-rcu-1: write: broken pipe
+write unix ->/var/tmp/824-502/pb-95222-rcu-1: write: broken pipe
+write unix ->/var/tmp/824-502/pb-95222-rcu-2: write: broken pipe
+unexpected EOF
+unexpected EOF
+unexpected EOF
+write unix ->/var/tmp/824-502/pb-95222-rcu-2: write: broken pipe
+write unix ->/var/tmp/824-502/pb-95222-rcu-1: write: broken pipe
+unexpected EOF
+write unix ->/var/tmp/824-502/pb-95222-rcu-2: write: broken pipe
+unexpected EOF
+ForwardTest: SENDER IS NOT CURRENT PRIMARY
+unexpected EOF
+write unix ->/var/tmp/824-502/pb-95222-rcu-2: write: broken pipe
+write unix ->/var/tmp/824-502/pb-95222-rcu-2: write: broken pipe
+unexpected EOF
+unexpected EOF
+unexpected EOF
+2020/06/16 22:22:59 rpc.Register: method "Bootstrapping" has 2 input parameters; needs exactly three
+2020/06/16 22:22:59 rpc.Register: method "Update" has 5 input parameters; needs exactly three
+unexpected EOF
+unexpected EOF
+write unix ->/var/tmp/824-502/pb-95222-rcu-2: write: broken pipe
+write unix ->/var/tmp/824-502/pb-95222-rcu-2: write: broken pipe
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+write unix ->/var/tmp/824-502/pb-95222-rcu-2: write: broken pipe
+write unix ->/var/tmp/824-502/pb-95222-rcu-2: write: broken pipe
+unexpected EOF
+write unix ->/var/tmp/824-502/pb-95222-rcu-2: write: broken pipe
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+write unix ->/var/tmp/824-502/pb-95222-rcu-2: write: broken pipe
+write unix ->/var/tmp/824-502/pb-95222-rcu-2: write: broken pipe
+unexpected EOF
+write unix ->/var/tmp/824-502/pb-95222-rcu-2: write: broken pipe
+unexpected EOF
+2020/06/16 22:23:01 rpc.Register: method "Bootstrapping" has 2 input parameters; needs exactly three
+2020/06/16 22:23:01 rpc.Register: method "Update" has 5 input parameters; needs exactly three
+unexpected EOF
+unexpected EOF
+write unix ->/var/tmp/824-502/pb-95222-rcu-2: write: broken pipe
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+write unix ->/var/tmp/824-502/pb-95222-rcu-2: write: broken pipe
+write unix ->/var/tmp/824-502/pb-95222-rcu-2: write: broken pipe
+2020/06/16 22:23:03 rpc.Register: method "Bootstrapping" has 2 input parameters; needs exactly three
+2020/06/16 22:23:03 rpc.Register: method "Update" has 5 input parameters; needs exactly three
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+write unix ->/var/tmp/824-502/pb-95222-rcu-2: write: broken pipe
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+write unix ->/var/tmp/824-502/pb-95222-rcu-2: write: broken pipe
+unexpected EOF
+write unix ->/var/tmp/824-502/pb-95222-rcu-2: write: broken pipe
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+write unix ->/var/tmp/824-502/pb-95222-rcu-2: write: broken pipe
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+2020/06/16 22:23:05 rpc.Register: method "Bootstrapping" has 2 input parameters; needs exactly three
+2020/06/16 22:23:05 rpc.Register: method "Update" has 5 input parameters; needs exactly three
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+write unix ->/var/tmp/824-502/pb-95222-rcu-2: write: broken pipe
+unexpected EOF
+write unix ->/var/tmp/824-502/pb-95222-rcu-2: write: broken pipe
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+write unix ->/var/tmp/824-502/pb-95222-rcu-2: write: broken pipe
+unexpected EOF
+unexpected EOF
+write unix ->/var/tmp/824-502/pb-95222-rcu-2: write: broken pipe
+2020/06/16 22:23:07 rpc.Register: method "Bootstrapping" has 2 input parameters; needs exactly three
+2020/06/16 22:23:07 rpc.Register: method "Update" has 5 input parameters; needs exactly three
+unexpected EOF
+unexpected EOF
+unexpected EOF
+write unix ->/var/tmp/824-502/pb-95222-rcu-2: write: broken pipe
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+write unix ->/var/tmp/824-502/pb-95222-rcu-2: write: broken pipe
+unexpected EOF
+unexpected EOF
+PutAppend: NOT THE PRIMARY YET
+2020/06/16 22:23:09 rpc.Register: method "Bootstrapping" has 2 input parameters; needs exactly three
+2020/06/16 22:23:09 rpc.Register: method "Update" has 5 input parameters; needs exactly three
+2020/06/16 22:23:11 rpc.Register: method "Bootstrapping" has 2 input parameters; needs exactly three
+2020/06/16 22:23:11 rpc.Register: method "Update" has 5 input parameters; needs exactly three
+2020/06/16 22:23:13 rpc.Register: method "Bootstrapping" has 2 input parameters; needs exactly three
+2020/06/16 22:23:13 rpc.Register: method "Update" has 5 input parameters; needs exactly three
+2020/06/16 22:23:15 rpc.Register: method "Bootstrapping" has 2 input parameters; needs exactly three
+2020/06/16 22:23:15 rpc.Register: method "Update" has 5 input parameters; needs exactly three
+  ... Appends done ... 
+  ... Passed
+2020/06/16 22:23:18 rpc.Register: method "GetRPCCount" has 1 input parameters; needs exactly three
+2020/06/16 22:23:18 rpc.Register: method "Kill" has 1 input parameters; needs exactly three
+Test: Old primary does not serve Gets ...
+2020/06/16 22:23:19 rpc.Register: method "Bootstrapping" has 2 input parameters; needs exactly three
+2020/06/16 22:23:19 rpc.Register: method "Update" has 5 input parameters; needs exactly three
+2020/06/16 22:23:20 rpc.Register: method "Bootstrapping" has 2 input parameters; needs exactly three
+2020/06/16 22:23:20 rpc.Register: method "Update" has 5 input parameters; needs exactly three
+GetTest: NOT THE PRIMARY YET
+  ... Passed
+2020/06/16 22:23:25 rpc.Register: method "GetRPCCount" has 1 input parameters; needs exactly three
+2020/06/16 22:23:25 rpc.Register: method "Kill" has 1 input parameters; needs exactly three
+2020/06/16 22:23:26 rpc.Register: method "Bootstrapping" has 2 input parameters; needs exactly three
+2020/06/16 22:23:26 rpc.Register: method "Update" has 5 input parameters; needs exactly three
+Test: Partitioned old primary does not complete Gets ...
+2020/06/16 22:23:27 rpc.Register: method "Bootstrapping" has 2 input parameters; needs exactly three
+2020/06/16 22:23:27 rpc.Register: method "Update" has 5 input parameters; needs exactly three
+2020/06/16 22:23:29 rpc.Register: method "Bootstrapping" has 2 input parameters; needs exactly three
+2020/06/16 22:23:29 rpc.Register: method "Update" has 5 input parameters; needs exactly three
+GetTest: NOT THE PRIMARY YET
+  ... Passed
+PASS
+ok  	pbservice	111.472s
+2020/06/16 22:23:35 rpc.Register: method "GetRPCCount" has 1 input parameters; needs exactly three
+2020/06/16 22:23:35 rpc.Register: method "Kill" has 1 input parameters; needs exactly three
+Test: Single primary, no backup ...
+2020/06/16 22:23:36 rpc.Register: method "Bootstrapping" has 2 input parameters; needs exactly three
+2020/06/16 22:23:36 rpc.Register: method "Update" has 5 input parameters; needs exactly three
+  ... Passed
+Test: Add a backup ...
+2020/06/16 22:23:37 rpc.Register: method "Bootstrapping" has 2 input parameters; needs exactly three
+2020/06/16 22:23:37 rpc.Register: method "Update" has 5 input parameters; needs exactly three
+  ... Passed
+Test: Count RPCs to viewserver ...
+  ... Passed
+Test: Primary failure ...
+  ... Passed
+Test: Kill last server, new one should not be active ...
+2020/06/16 22:23:38 rpc.Register: method "Bootstrapping" has 2 input parameters; needs exactly three
+2020/06/16 22:23:38 rpc.Register: method "Update" has 5 input parameters; needs exactly three
