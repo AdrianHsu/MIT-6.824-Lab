@@ -22,6 +22,7 @@ package paxos
 
 import (
 	"errors"
+	"math"
 	"net"
 )
 import "net/rpc"
@@ -36,9 +37,11 @@ import "math/rand"
 
 
 // added by Adrian
-type Instance struct {
+type Instance struct { // key: n_a, value: v_a
 	fate        Fate
-	value       interface{}
+	n_p         int
+	n_a         int
+	v_a         interface{}
 }
 
 type AcceptedProposal struct {
@@ -69,10 +72,8 @@ type Paxos struct {
 
 
 	// Your data here.
-	instances  map[int]Instance
+	instances  map[int]*Instance
 	// acceptor's state
-	n_p        int
-	ap         *AcceptedProposal
 }
 
 //
@@ -115,33 +116,40 @@ func call(srv string, name string, args interface{}, reply interface{}) bool {
 // proposer(v)
 func (px *Paxos) Propose(seq int, v interface{}) {
 
-	ch := make(chan AcceptedProposal)
+	px.mu.Lock()
+	px.instances[seq] = &Instance{fate: Pending, n_p: -1, n_a: -1, v_a: nil}
+	px.mu.Unlock()
 
+	ch := make(chan AcceptedProposal)
 	for _, peer := range px.peers {
 		go func(peer string, seq int) {
 			args :=	&PrepareArgs{seq}
 			var reply PrepareReply
 			ok := call(peer, "Paxos.Prepare", args, &reply)
 			if ok {
-				log.Printf("peer %v prepare_ok: seq num is %v", peer, reply.N)
+				log.Printf("peer %v prepare_ok: seq num is %v", peer, seq)
 				ch <- AcceptedProposal{reply.N_a, reply.V_a}
 			}
 		}(peer, seq)
 	}
 
 	var count = 0
-	var max_n_a = 0
+	var max_n_a = -1
 	var vp = v
 	for ap := range ch {
-		if ap.n_a > max_n_a {
-			max_n_a = ap.n_a
-			vp = ap.n_a
+		if ap.n_a != -1 {
+			if ap.n_a > max_n_a {
+				log.Printf("%v, %v", ap.n_a, ap.v_a)
+				max_n_a = ap.n_a
+				vp = ap.v_a
+			}
 		}
 		count += 1
 		if count >= (len(px.peers) + 1)/2 { // +1 to deal with odd length
 			break
 		}
 	}
+	log.Printf("over majority for promise, value is: %v", vp)
 
 	ch2 := make(chan int)
 
@@ -179,32 +187,40 @@ func (px *Paxos) Propose(seq int, v interface{}) {
 // added by Adrian
 // acceptor's prepare(n) handler
 func (px *Paxos) Prepare(args *PrepareArgs, reply *PrepareReply) error {
+
+	px.mu.Lock()
+	defer px.mu.Unlock()
 	n := args.Seq
-	if n > px.n_p {
-		px.n_p = n
-		reply.N = n
-		if px.ap != nil {
-			reply.N_a = px.ap.n_a
-			reply.V_a = px.ap.v_a
-		}
+	ins, ok := px.instances[n]
+	if !ok {
+		px.instances[n] = &Instance{fate: Pending, n_p: -1, n_a: -1, v_a: nil}
+		ins = px.instances[n]
+	}
+	if n > ins.n_p {
+		ins.n_p = n
+		reply.N_a = ins.n_a
+		reply.V_a = ins.v_a
 	} else {
-		reply.Err = "PREPARE: rejection"
-		return errors.New("PREPARE: rejection")
+		text := fmt.Sprintf("PREPARE: rejection %v", n)
+		return errors.New(text)
 	}
 	return nil
 }
 
 // added by Adrian
 func (px *Paxos) Accept(args *AcceptArgs, reply *AcceptReply) error {
-
+	px.mu.Lock()
+	defer px.mu.Unlock()
 	n := args.Seq
-	if n >= px.n_p {
+	ins, _ := px.instances[n]
+	if n >= ins.n_p {
 		reply.N = n
-		px.n_p = n
-		px.ap = &AcceptedProposal{n_a: n, v_a: args.V_p}
+		ins.n_p = n
+		px.instances[n].n_a = n
+		px.instances[n].v_a = args.V_p
 	} else {
-		reply.Err = "ACCEPT: rejection"
-		return errors.New("ACCEPT: rejection")
+		text := fmt.Sprintf("ACCEPT: rejection %v", n)
+		return errors.New(text)
 	}
 
 	return nil
@@ -212,8 +228,10 @@ func (px *Paxos) Accept(args *AcceptArgs, reply *AcceptReply) error {
 
 // added by Adrian
 func (px *Paxos) Decided(args *DecidedArgs, reply *DecidedReply) error {
-	log.Printf("peer %v got new value: %v", px.me, args.V_p)
-	px.instances[args.N] = Instance{Decided, args.V_p}
+	px.mu.Lock()
+	defer px.mu.Unlock()
+	log.Printf("peer %v decided new seq: %v, value: %v", px.me, args.N, args.V_p)
+	px.instances[args.N].fate = Decided
 	return nil
 }
 
@@ -231,7 +249,6 @@ func (px *Paxos) Start(seq int, v interface{}) {
 	//	return
 	//}
 	go func(seq int, v interface{}) {
-		px.instances[seq] = Instance{fate: Pending, value: -1}
 		px.Propose(seq, v)
 	}(seq, v)
 
@@ -254,7 +271,11 @@ func (px *Paxos) Done(seq int) {
 //
 func (px *Paxos) Max() int {
 	// Your code here.
-	return 0
+	var max = -1.0
+	for seq := range px.instances { // seq is the key
+		max = math.Max(float64(seq), max)
+	}
+	return int(max)
 }
 
 //
@@ -299,7 +320,12 @@ func (px *Paxos) Min() int {
 //
 func (px *Paxos) Status(seq int) (Fate, interface{}) {
 	// Your code here.
-	return px.instances[seq].fate, px.instances[seq].value
+	ins, ok := px.instances[seq]
+	if ok {
+		return ins.fate, ins.v_a
+	} else {
+		return Pending, 0
+	}
 }
 
 //
@@ -346,9 +372,7 @@ func Make(peers []string, me int, rpcs *rpc.Server) *Paxos {
 
 
 	// Your initialization code here.
-	px.n_p = -1
-	px.ap = nil
-	px.instances = make(map[int]Instance)
+	px.instances = make(map[int]*Instance)
 
 	if rpcs != nil {
 		// caller will create socket &c

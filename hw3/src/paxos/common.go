@@ -17,7 +17,7 @@ type PrepareReply struct {
 
 type AcceptArgs struct {
 	Seq         int
-	V_p         interface{}
+	V_p         interface{} // v prime
 }
 
 type AcceptReply struct {
