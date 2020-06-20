@@ -187,7 +187,7 @@ func (px *Paxos) AcceptorPrepare(args *PrepareArgs, reply *PrepareReply) error {
 	ins, _ := px.instances.LoadOrStore(n, &Instance{fate: Pending, n_p: -1, n_a: -1, v_a: nil})
 	inst := ins.(*Instance)
 	if n > inst.n_p {
-		inst.n_p = n
+		px.instances.LoadOrStore(n, &Instance{fate: Pending, n_p: n, n_a: -1, v_a: nil})
 		reply.N_a = inst.n_a
 		reply.V_a = inst.v_a
 	} else {
