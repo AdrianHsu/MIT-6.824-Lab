@@ -22,7 +22,6 @@ package paxos
 
 import (
 	"errors"
-	"math"
 	"net"
 )
 import "net/rpc"
@@ -72,7 +71,7 @@ type Paxos struct {
 
 
 	// Your data here.
-	instances  map[int]*Instance
+	instances  sync.Map
 	// acceptor's state
 }
 
@@ -114,18 +113,16 @@ func call(srv string, name string, args interface{}, reply interface{}) bool {
 
 // added by Adrian
 // proposer(v)
-func (px *Paxos) Propose(seq int, v interface{}) {
+func (px *Paxos) ProposerPropose(seq int, v interface{}) {
 
-	px.mu.Lock()
-	px.instances[seq] = &Instance{fate: Pending, n_p: -1, n_a: -1, v_a: nil}
-	px.mu.Unlock()
+	px.instances.Store(seq, &Instance{fate: Pending, n_p: -1, n_a: -1, v_a: nil})
 
 	ch := make(chan AcceptedProposal)
 	for _, peer := range px.peers {
 		go func(peer string, seq int) {
 			args :=	&PrepareArgs{seq}
 			var reply PrepareReply
-			ok := call(peer, "Paxos.Prepare", args, &reply)
+			ok := call(peer, "Paxos.AcceptorPrepare", args, &reply)
 			if ok {
 				log.Printf("peer %v prepare_ok: seq num is %v", peer, seq)
 				ch <- AcceptedProposal{reply.N_a, reply.V_a}
@@ -137,12 +134,10 @@ func (px *Paxos) Propose(seq int, v interface{}) {
 	var max_n_a = -1
 	var vp = v
 	for ap := range ch {
-		if ap.n_a != -1 {
-			if ap.n_a > max_n_a {
-				log.Printf("%v, %v", ap.n_a, ap.v_a)
-				max_n_a = ap.n_a
-				vp = ap.v_a
-			}
+		if ap.n_a > max_n_a {
+			log.Printf("%v, %v", ap.n_a, ap.v_a)
+			max_n_a = ap.n_a
+			vp = ap.v_a
 		}
 		count += 1
 		if count >= (len(px.peers) + 1)/2 { // +1 to deal with odd length
@@ -157,7 +152,7 @@ func (px *Paxos) Propose(seq int, v interface{}) {
 		go func(peer string, seq int, vp interface{}) {
 			args :=	&AcceptArgs{seq, vp}
 			var reply AcceptReply
-			ok := call(peer, "Paxos.Accept", args, &reply)
+			ok := call(peer, "Paxos.AcceptorAccept", args, &reply)
 			if ok {
 				log.Printf("peer %v accept_ok", peer)
 				ch2 <- reply.N
@@ -177,7 +172,7 @@ func (px *Paxos) Propose(seq int, v interface{}) {
 		go func(peer string, seq int, vp interface{}) {
 			args :=	&DecidedArgs{seq,vp}
 			var reply DecidedReply
-			ok := call(peer, "Paxos.Decided", args, &reply)
+			ok := call(peer, "Paxos.AcceptorDecided", args, &reply)
 			if ok {
 				log.Printf("peer %v decided_ok", peer)
 			}
@@ -186,20 +181,15 @@ func (px *Paxos) Propose(seq int, v interface{}) {
 }
 // added by Adrian
 // acceptor's prepare(n) handler
-func (px *Paxos) Prepare(args *PrepareArgs, reply *PrepareReply) error {
+func (px *Paxos) AcceptorPrepare(args *PrepareArgs, reply *PrepareReply) error {
 
-	px.mu.Lock()
-	defer px.mu.Unlock()
 	n := args.Seq
-	ins, ok := px.instances[n]
-	if !ok {
-		px.instances[n] = &Instance{fate: Pending, n_p: -1, n_a: -1, v_a: nil}
-		ins = px.instances[n]
-	}
-	if n > ins.n_p {
-		ins.n_p = n
-		reply.N_a = ins.n_a
-		reply.V_a = ins.v_a
+	ins, _ := px.instances.LoadOrStore(n, &Instance{fate: Pending, n_p: -1, n_a: -1, v_a: nil})
+	inst := ins.(*Instance)
+	if n > inst.n_p {
+		inst.n_p = n
+		reply.N_a = inst.n_a
+		reply.V_a = inst.v_a
 	} else {
 		text := fmt.Sprintf("PREPARE: rejection %v", n)
 		return errors.New(text)
@@ -208,16 +198,14 @@ func (px *Paxos) Prepare(args *PrepareArgs, reply *PrepareReply) error {
 }
 
 // added by Adrian
-func (px *Paxos) Accept(args *AcceptArgs, reply *AcceptReply) error {
-	px.mu.Lock()
-	defer px.mu.Unlock()
+func (px *Paxos) AcceptorAccept(args *AcceptArgs, reply *AcceptReply) error {
+
 	n := args.Seq
-	ins, _ := px.instances[n]
-	if n >= ins.n_p {
+	ins, _ := px.instances.LoadOrStore(n, &Instance{fate: Pending, n_p: -1, n_a: -1, v_a: nil})
+	inst := ins.(*Instance)
+	if n >= inst.n_p {
 		reply.N = n
-		ins.n_p = n
-		px.instances[n].n_a = n
-		px.instances[n].v_a = args.V_p
+		px.instances.Store(n, &Instance{fate: Pending, n_p: n, n_a: n, v_a: args.V_p})
 	} else {
 		text := fmt.Sprintf("ACCEPT: rejection %v", n)
 		return errors.New(text)
@@ -227,11 +215,13 @@ func (px *Paxos) Accept(args *AcceptArgs, reply *AcceptReply) error {
 }
 
 // added by Adrian
-func (px *Paxos) Decided(args *DecidedArgs, reply *DecidedReply) error {
-	px.mu.Lock()
-	defer px.mu.Unlock()
+func (px *Paxos) AcceptorDecided(args *DecidedArgs, reply *DecidedReply) error {
+
 	log.Printf("peer %v decided new seq: %v, value: %v", px.me, args.N, args.V_p)
-	px.instances[args.N].fate = Decided
+
+	ins, _ := px.instances.Load(args.N)
+	inst := ins.(*Instance)
+	px.instances.Store(args.N, &Instance{Decided, inst.n_p, inst.n_a, inst.v_a})
 	return nil
 }
 
@@ -249,7 +239,7 @@ func (px *Paxos) Start(seq int, v interface{}) {
 	//	return
 	//}
 	go func(seq int, v interface{}) {
-		px.Propose(seq, v)
+		px.ProposerPropose(seq, v)
 	}(seq, v)
 
 }
@@ -271,11 +261,15 @@ func (px *Paxos) Done(seq int) {
 //
 func (px *Paxos) Max() int {
 	// Your code here.
-	var max = -1.0
-	for seq := range px.instances { // seq is the key
-		max = math.Max(float64(seq), max)
-	}
-	return int(max)
+	var max = -1
+	px.instances.Range(func(k, v interface{}) bool { // seq is the key
+		if k.(int) > max {
+			max = k.(int)
+		}
+		return true
+	})
+
+	return max
 }
 
 //
@@ -320,9 +314,10 @@ func (px *Paxos) Min() int {
 //
 func (px *Paxos) Status(seq int) (Fate, interface{}) {
 	// Your code here.
-	ins, ok := px.instances[seq]
+
+	ins, ok := px.instances.Load(seq)
 	if ok {
-		return ins.fate, ins.v_a
+		return ins.(*Instance).fate, ins.(*Instance).v_a
 	} else {
 		return Pending, 0
 	}
@@ -372,7 +367,7 @@ func Make(peers []string, me int, rpcs *rpc.Server) *Paxos {
 
 
 	// Your initialization code here.
-	px.instances = make(map[int]*Instance)
+	px.instances = sync.Map{}
 
 	if rpcs != nil {
 		// caller will create socket &c
