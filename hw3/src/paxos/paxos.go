@@ -20,7 +20,10 @@ package paxos
 // px.Min() int -- instances before this seq have been forgotten
 //
 
-import "net"
+import (
+	"errors"
+	"net"
+)
 import "net/rpc"
 import "log"
 
@@ -31,6 +34,17 @@ import "sync/atomic"
 import "fmt"
 import "math/rand"
 
+
+// added by Adrian
+type Instance struct {
+	fate        Fate
+	value       interface{}
+}
+
+type AcceptedProposal struct {
+	n_a          int
+	v_a          interface{}
+}
 
 // px.Status() return values, indicating
 // whether an agreement has been decided,
@@ -55,6 +69,10 @@ type Paxos struct {
 
 
 	// Your data here.
+	instances  map[int]Instance
+	// acceptor's state
+	n_p        int
+	ap         *AcceptedProposal
 }
 
 //
@@ -93,6 +111,111 @@ func call(srv string, name string, args interface{}, reply interface{}) bool {
 	return false
 }
 
+// added by Adrian
+// proposer(v)
+func (px *Paxos) Propose(seq int, v interface{}) {
+
+	ch := make(chan AcceptedProposal)
+
+	for _, peer := range px.peers {
+		go func(peer string, seq int) {
+			args :=	&PrepareArgs{seq}
+			var reply PrepareReply
+			ok := call(peer, "Paxos.Prepare", args, &reply)
+			if ok {
+				log.Printf("peer %v prepare_ok: seq num is %v", peer, reply.N)
+				ch <- AcceptedProposal{reply.N_a, reply.V_a}
+			}
+		}(peer, seq)
+	}
+
+	var count = 0
+	var max_n_a = 0
+	var vp = v
+	for ap := range ch {
+		if ap.n_a > max_n_a {
+			max_n_a = ap.n_a
+			vp = ap.n_a
+		}
+		count += 1
+		if count >= (len(px.peers) + 1)/2 { // +1 to deal with odd length
+			break
+		}
+	}
+
+	ch2 := make(chan int)
+
+	for _, peer := range px.peers {
+		go func(peer string, seq int, vp interface{}) {
+			args :=	&AcceptArgs{seq, vp}
+			var reply AcceptReply
+			ok := call(peer, "Paxos.Accept", args, &reply)
+			if ok {
+				log.Printf("peer %v accept_ok", peer)
+				ch2 <- reply.N
+			}
+		}(peer, seq, vp)
+	}
+
+	count = 0
+	for range ch2 {
+		count += 1
+		if count >= (len(px.peers) + 1)/ 2 {
+			break
+		}
+	}
+
+	for _, peer := range px.peers {
+		go func(peer string, seq int, vp interface{}) {
+			args :=	&DecidedArgs{seq,vp}
+			var reply DecidedReply
+			ok := call(peer, "Paxos.Decided", args, &reply)
+			if ok {
+				log.Printf("peer %v decided_ok", peer)
+			}
+		}(peer, seq, vp)
+	}
+}
+// added by Adrian
+// acceptor's prepare(n) handler
+func (px *Paxos) Prepare(args *PrepareArgs, reply *PrepareReply) error {
+	n := args.Seq
+	if n > px.n_p {
+		px.n_p = n
+		reply.N = n
+		if px.ap != nil {
+			reply.N_a = px.ap.n_a
+			reply.V_a = px.ap.v_a
+		}
+	} else {
+		reply.Err = "PREPARE: rejection"
+		return errors.New("PREPARE: rejection")
+	}
+	return nil
+}
+
+// added by Adrian
+func (px *Paxos) Accept(args *AcceptArgs, reply *AcceptReply) error {
+
+	n := args.Seq
+	if n >= px.n_p {
+		reply.N = n
+		px.n_p = n
+		px.ap = &AcceptedProposal{n_a: n, v_a: args.V_p}
+	} else {
+		reply.Err = "ACCEPT: rejection"
+		return errors.New("ACCEPT: rejection")
+	}
+
+	return nil
+}
+
+// added by Adrian
+func (px *Paxos) Decided(args *DecidedArgs, reply *DecidedReply) error {
+	log.Printf("peer %v got new value: %v", px.me, args.V_p)
+	px.instances[args.N] = Instance{Decided, args.V_p}
+	return nil
+}
 
 //
 // the application wants paxos to start agreement on
@@ -103,6 +226,15 @@ func call(srv string, name string, args interface{}, reply interface{}) bool {
 //
 func (px *Paxos) Start(seq int, v interface{}) {
 	// Your code here.
+
+	//if seq < px.Min() {
+	//	return
+	//}
+	go func(seq int, v interface{}) {
+		px.instances[seq] = Instance{fate: Pending, value: -1}
+		px.Propose(seq, v)
+	}(seq, v)
+
 }
 
 //
@@ -150,7 +282,7 @@ func (px *Paxos) Max() int {
 // even if all reachable peers call Done. The reason for
 // this is that when the unreachable peer comes back to
 // life, it will need to catch up on instances that it
-// missed -- the other peers therefor cannot forget these
+// missed -- the other peers therefore cannot forget these
 // instances.
 //
 func (px *Paxos) Min() int {
@@ -167,10 +299,8 @@ func (px *Paxos) Min() int {
 //
 func (px *Paxos) Status(seq int) (Fate, interface{}) {
 	// Your code here.
-	return Pending, nil
+	return px.instances[seq].fate, px.instances[seq].value
 }
-
-
 
 //
 // tell the peer to shut itself down.
@@ -216,6 +346,9 @@ func Make(peers []string, me int, rpcs *rpc.Server) *Paxos {
 
 
 	// Your initialization code here.
+	px.n_p = -1
+	px.ap = nil
+	px.instances = make(map[int]Instance)
 
 	if rpcs != nil {
 		// caller will create socket &c
