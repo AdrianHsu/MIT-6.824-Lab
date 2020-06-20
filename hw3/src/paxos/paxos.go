@@ -69,7 +69,6 @@ type Paxos struct {
 	peers      []string
 	me         int // index into peers[]
 
-
 	// Your data here.
 	instances  sync.Map
 	// acceptor's state
@@ -115,11 +114,9 @@ func call(srv string, name string, args interface{}, reply interface{}) bool {
 // proposer(v)
 func (px *Paxos) ProposerPropose(seq int, v interface{}) {
 
-	px.instances.Store(seq, &Instance{fate: Pending, n_p: -1, n_a: -1, v_a: nil})
-
 	ch := make(chan AcceptedProposal)
 	for _, peer := range px.peers {
-		go func(peer string, seq int) {
+		go func(peer string, seq int, ch chan AcceptedProposal) {
 			args :=	&PrepareArgs{seq}
 			var reply PrepareReply
 			ok := call(peer, "Paxos.AcceptorPrepare", args, &reply)
@@ -127,7 +124,7 @@ func (px *Paxos) ProposerPropose(seq int, v interface{}) {
 				log.Printf("peer %v prepare_ok: seq num is %v", peer, seq)
 				ch <- AcceptedProposal{reply.N_a, reply.V_a}
 			}
-		}(peer, seq)
+		}(peer, seq, ch)
 	}
 
 	var count = 0
@@ -149,7 +146,7 @@ func (px *Paxos) ProposerPropose(seq int, v interface{}) {
 	ch2 := make(chan int)
 
 	for _, peer := range px.peers {
-		go func(peer string, seq int, vp interface{}) {
+		go func(peer string, seq int, vp interface{}, ch2 chan int) {
 			args :=	&AcceptArgs{seq, vp}
 			var reply AcceptReply
 			ok := call(peer, "Paxos.AcceptorAccept", args, &reply)
@@ -157,7 +154,7 @@ func (px *Paxos) ProposerPropose(seq int, v interface{}) {
 				log.Printf("peer %v accept_ok", peer)
 				ch2 <- reply.N
 			}
-		}(peer, seq, vp)
+		}(peer, seq, vp, ch2)
 	}
 
 	count = 0
@@ -187,7 +184,7 @@ func (px *Paxos) AcceptorPrepare(args *PrepareArgs, reply *PrepareReply) error {
 	ins, _ := px.instances.LoadOrStore(n, &Instance{fate: Pending, n_p: -1, n_a: -1, v_a: nil})
 	inst := ins.(*Instance)
 	if n > inst.n_p {
-		px.instances.LoadOrStore(n, &Instance{fate: Pending, n_p: n, n_a: -1, v_a: nil})
+		px.instances.Store(n, &Instance{fate: Pending, n_p: n, n_a: -1, v_a: nil})
 		reply.N_a = inst.n_a
 		reply.V_a = inst.v_a
 	} else {
@@ -201,8 +198,8 @@ func (px *Paxos) AcceptorPrepare(args *PrepareArgs, reply *PrepareReply) error {
 func (px *Paxos) AcceptorAccept(args *AcceptArgs, reply *AcceptReply) error {
 
 	n := args.Seq
-	ins, _ := px.instances.LoadOrStore(n, &Instance{fate: Pending, n_p: -1, n_a: -1, v_a: nil})
-	inst := ins.(*Instance)
+	ins, _ := px.instances.Load(n)
+	inst := ins.(*Instance) // ins should never be nil
 	if n >= inst.n_p {
 		reply.N = n
 		px.instances.Store(n, &Instance{fate: Pending, n_p: n, n_a: n, v_a: args.V_p})
