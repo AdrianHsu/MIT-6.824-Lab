@@ -191,17 +191,17 @@ func TestDeaf(t *testing.T) {
 	pxa[0].Start(0, "hello")
 	waitn(t, pxa, 0, npaxos)
 
-	os.Remove(pxh[0])
-	os.Remove(pxh[npaxos-1])
+	os.Remove(pxh[0]) // pxh 0 is now deaf -> others will receive prepare_fail from pxh 0
+	os.Remove(pxh[npaxos-1]) // pxh 4 is now deaf -> others will receive prepare_fail from pxh 4
 
-	pxa[1].Start(1, "goodbye")
+	pxa[1].Start(1, "goodbye") // therefore, only pxh 1, 2, 3 will receive. (no 0 and 4)
 	waitmajority(t, pxa, 1)
 	time.Sleep(1 * time.Second)
-	if ndecided(t, pxa, 1) != npaxos-2 {
+	if ndecided(t, pxa, 1) != npaxos-2 { // 5 - 2 = 3
 		t.Fatalf("a deaf peer heard about a decision")
 	}
 
-	pxa[0].Start(1, "xxx")
+	pxa[0].Start(1, "xxx") // all 5 acceptors cannot hear from pxa 0
 	waitn(t, pxa, 1, npaxos-1)
 	time.Sleep(1 * time.Second)
 	if ndecided(t, pxa, 1) != npaxos-1 {

@@ -22,6 +22,8 @@ package paxos
 
 import (
 	"net"
+	"strconv"
+	"strings"
 )
 import "net/rpc"
 import "log"
@@ -140,9 +142,16 @@ func (px *Paxos) ProposerPrepare(N int, seq int, v interface{}) (bool, interface
 	var max_n_a = -1
 	var v_prime = v
 	for _, peer := range px.peers {
-		args := PrepareArgs{seq, N}
+		args := &PrepareArgs{seq, N}
 		var reply PrepareReply
-		ok := call(peer, "Paxos.AcceptorPrepare", args, &reply)
+		var res = strings.Split(peer, "-")
+		var ok = false
+		if res[len(res) - 1] == strconv.Itoa(px.me) {
+			px.AcceptorPrepare(args, &reply)
+			ok = true
+		} else {
+			ok = call(peer, "Paxos.AcceptorPrepare", args, &reply)
+		}
 		if ok && reply.Err == "" {
 			//log.Printf("me is %v. peer %v prepare_ok: N is %v", px.me, peer, reply.N)
 			count += 1
@@ -150,9 +159,12 @@ func (px *Paxos) ProposerPrepare(N int, seq int, v interface{}) (bool, interface
 				max_n_a = reply.N_a
 				v_prime = reply.V_a
 			}
+		} else {
+			//log.Printf("no reply. me: %v, peer: %v", px.me, peer)
 		}
 	}
 
+	//log.Printf("count %v", count)
 	if count < (len(px.peers) + 1)/ 2 {
 		return false, 0
 	}
@@ -166,7 +178,14 @@ func (px *Paxos) ProposerAccept(N int, seq int, vp interface{}) bool {
 	for _, peer := range px.peers {
 		args :=	&AcceptArgs{seq, N, vp}
 		var reply AcceptReply
-		ok := call(peer, "Paxos.AcceptorAccept", args, &reply)
+		var ok = false
+		var res = strings.Split(peer, "-")
+		if res[len(res) - 1] == strconv.Itoa(px.me) {
+			px.AcceptorAccept(args, &reply)
+			ok = true
+		} else {
+			ok = call(peer, "Paxos.AcceptorAccept", args, &reply)
+		}
 		if ok && reply.Err == "" {
 			//log.Printf("me is %v. peer %v accept_ok", px.me, peer)
 			count += 1
@@ -183,7 +202,14 @@ func (px *Paxos) ProposerDecided(seq int, vp interface{}) {
 	for _, peer := range px.peers {
 		args :=	&DecidedArgs{seq,vp}
 		var reply DecidedReply
-		ok := call(peer, "Paxos.AcceptorDecided", args, &reply)
+		var res = strings.Split(peer, "-")
+		var ok = false
+		if res[len(res) - 1] == strconv.Itoa(px.me) {
+			px.AcceptorDecided(args, &reply)
+			ok = true
+		} else {
+			ok = call(peer, "Paxos.AcceptorDecided", args, &reply)
+		}
 		if ok {
 			//log.Printf("me is %v. peer %v decided_ok", px.me, peer)
 		}
