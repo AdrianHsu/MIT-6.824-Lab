@@ -6,6 +6,7 @@ type Err string
 
 type PrepareArgs struct {
 	Seq         int
+	N           int
 }
 
 type PrepareReply struct {
@@ -17,6 +18,7 @@ type PrepareReply struct {
 
 type AcceptArgs struct {
 	Seq         int
+	N           int
 	V_p         interface{} // v prime
 }
 
@@ -26,7 +28,7 @@ type AcceptReply struct {
 }
 
 type DecidedArgs struct {
-	N           int
+	Seq           int
 	V_p          interface{}
 }
 
