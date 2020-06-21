@@ -517,7 +517,7 @@ func TestRPCCount(t *testing.T) {
 		pxa[i] = Make(pxh, i, nil)
 	}
 
-	ninst1 := 5
+	ninst1 := 3//5
 	seq := 0
 	for i := 0; i < ninst1; i++ {
 		pxa[0].Start(seq, "x")
