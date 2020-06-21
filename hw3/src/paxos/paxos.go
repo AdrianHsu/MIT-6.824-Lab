@@ -113,7 +113,7 @@ func call(srv string, name string, args interface{}, reply interface{}) bool {
 }
 
 func (px *Paxos) CommittedToWhom(N int) int {
-	var N0 = N >> 20
+	var N0 = uint(N) >> 20
 	return int(math.Log2(float64(N0)))
 }
 
@@ -122,7 +122,7 @@ func (px *Paxos) CommittedToWhom(N int) int {
 func (px *Paxos) ProposerPropose(seq int, v interface{}) {
 
 	var decided = false
-	var N = 1 << (px.me + 20)
+	var N = 1 << uint(px.me + 20)
 
 	for !decided {
 		if px.isdead() {
