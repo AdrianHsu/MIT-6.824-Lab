@@ -141,8 +141,9 @@ func (px *Paxos) ProposerPrepare(N int, seq int, v interface{}) (bool, interface
 	var count = 0
 	var max_n_a = -1
 	var v_prime = v
+	var doneValue, _ = px.doneValues.Load(px.me)
 	for i, peer := range px.peers {
-		args := &PrepareArgs{seq, N}
+		args := &PrepareArgs{seq, N, doneValue.(int), px.me}
 		var reply PrepareReply
 		var ok = false
 		if i == px.me {
@@ -218,6 +219,7 @@ func (px *Paxos) ProposerDecided(seq int, vp interface{}) {
 func (px *Paxos) AcceptorPrepare(args *PrepareArgs, reply *PrepareReply) error {
 
 	reply.N = args.N
+	px.Share(args.Z_i, args.Proposer)
 	ins, _ := px.instances.LoadOrStore(args.Seq, &Instance{fate: Pending, n_p: -1, n_a: -1, v_a: nil})
 	inst := ins.(*Instance)
 	if args.N > inst.n_p {
@@ -280,14 +282,11 @@ func (px *Paxos) Start(seq int, v interface{}) {
 
 }
 
-// added by Adrian
-func (px *Paxos) Share(args *ShareArgs, reply *ShareReply) error {
-
-	old, _ := px.doneValues.Load(args.Me)
-	if args.Seq > old.(int) {
-		px.doneValues.Store(args.Me, args.Seq)
+func (px *Paxos) Share(seq int, i int) {
+	old, _ := px.doneValues.Load(i)
+	if seq > old.(int) {
+		px.doneValues.Store(i, seq)
 	}
-	return nil
 }
 
 //
@@ -299,19 +298,9 @@ func (px *Paxos) Share(args *ShareArgs, reply *ShareReply) error {
 func (px *Paxos) Done(seq int) {
 	// Your code here.
 
-	for i, peer := range px.peers {
-		args :=	&ShareArgs{seq,px.me}
-		var reply ShareReply
-		var ok = false
-		if i == px.me {
-			px.Share(args, &reply)
-			ok = true
-		} else {
-			ok = call(peer, "Paxos.Share", args, &reply)
-		}
-		if !ok {
-			//log.Printf("doneValue sharing unreachable: %v", peer)
-		}
+	old, _ := px.doneValues.Load(px.me)
+	if seq > old.(int) {
+		px.doneValues.Store(px.me, seq)
 	}
 }
 

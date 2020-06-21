@@ -7,6 +7,8 @@ type Err string
 type PrepareArgs struct {
 	Seq         int
 	N           int
+	Z_i         int
+	Proposer    int
 }
 
 type PrepareReply struct {
@@ -33,15 +35,6 @@ type DecidedArgs struct {
 }
 
 type DecidedReply struct {
-	Err         Err
-}
-
-type ShareArgs struct {
-	Seq         int
-	Me          int
-}
-
-type ShareReply struct {
 	Err         Err
 }
 
