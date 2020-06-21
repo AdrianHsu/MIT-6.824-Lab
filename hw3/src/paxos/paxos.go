@@ -236,7 +236,7 @@ func (px *Paxos) AcceptorAccept(args *AcceptArgs, reply *AcceptReply) error {
 	reply.N = args.N
 	ins, _ := px.instances.Load(args.Seq)
 	if ins == nil {
-		return errors.New("instance should not be nil if it was promised")
+		return errors.New("AcceptorAccept: instance should not be nil if it was promised")
 	}
 	inst := ins.(*Instance)
 	if args.N >= inst.n_p {
@@ -254,7 +254,7 @@ func (px *Paxos) AcceptorDecided(args *DecidedArgs, reply *DecidedReply) error {
 	//log.Printf("peer %v decided new seq: %v, value: %v", px.me, args.Seq, args.V_p)
 	ins, _ := px.instances.Load(args.Seq)
 	if ins == nil {
-		return errors.New("instance should not be nil if it was promised")
+		return errors.New("AcceptorDecided: instance should not be nil if it was promised")
 	}
 	inst := ins.(*Instance)
 	px.instances.Store(args.Seq, &Instance{Decided, inst.n_p, inst.n_a, inst.v_a})
@@ -270,10 +270,10 @@ func (px *Paxos) AcceptorDecided(args *DecidedArgs, reply *DecidedReply) error {
 //
 func (px *Paxos) Start(seq int, v interface{}) {
 	// Your code here.
-
-	//if seq < px.Min() {
-	//	return
-	//}
+	min := px.Min()
+	if seq < min {
+		return
+	}
 	go func(seq int, v interface{}) {
 		px.ProposerPropose(seq, v)
 	}(seq, v)
@@ -384,24 +384,21 @@ func (px *Paxos) Min() int {
 		}
 		return true
 	})
-
-	//go func(min int) {
-	//	for i, peer := range px.peers {
-	//		args :=	&ForgetArgs{Z_i: min}
-	//		var reply ForgetReply
-	//		var ok = false
-	//		if i == px.me {
-	//			px.Forget(args, &reply)
-	//			ok = true
-	//		} else {
-	//			//log.Printf("forgot: %v", peer)
-	//			ok = call(peer, "Paxos.Forget", args, &reply)
-	//		}
-	//		if !ok {
-	//			//log.Printf("forgetting unreachable: %v", peer)
-	//		}
-	//	}
-	//}(min)
+	for i, peer := range px.peers {
+		args :=	&ForgetArgs{Z_i: min}
+		var reply ForgetReply
+		var ok = false
+		if i == px.me {
+			px.Forget(args, &reply)
+			ok = true
+		} else {
+			//log.Printf("forgot: %v", peer)
+			ok = call(peer, "Paxos.Forget", args, &reply)
+		}
+		if !ok {
+			//log.Printf("forgetting unreachable: %v", peer)
+		}
+	}
 	return min + 1
 }
 
@@ -414,7 +411,9 @@ func (px *Paxos) Min() int {
 //
 func (px *Paxos) Status(seq int) (Fate, interface{}) {
 	// Your code here.
-
+	if seq < px.Min() {
+		return Forgotten, 0
+	}
 	ins, ok := px.instances.Load(seq)
 	if ok {
 		return ins.(*Instance).fate, ins.(*Instance).v_a
