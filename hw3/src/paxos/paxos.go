@@ -21,7 +21,6 @@ package paxos
 //
 
 import (
-	"errors"
 	"net"
 )
 import "net/rpc"
@@ -111,6 +110,32 @@ func call(srv string, name string, args interface{}, reply interface{}) bool {
 	return false
 }
 
+
+
+// added by Adrian
+// proposer(v)
+func (px *Paxos) ProposerPropose(seq int, v interface{}) {
+
+	var N = 0
+	var vp = v // this v doesn't matter though
+	var reachMajority = false
+	for !reachMajority {
+		var v_prime = v
+		reachMajority, v_prime = px.Prepare(N, seq, v)
+		if !reachMajority {
+			N += 1
+		} else {
+			vp = v_prime
+		}
+	}
+	log.Printf("me is %v. reach majority for promise. N is %v, value is: %v", px.me, N, vp)
+
+	if px.Accept(N, seq, vp) == false {
+		return // give up
+	}
+	px.Decide(seq, vp)
+}
+// added by Adrian
 func (px *Paxos) Prepare(N int, seq int, v interface{}) (bool, interface{}) {
 
 	var count = 0
@@ -120,8 +145,8 @@ func (px *Paxos) Prepare(N int, seq int, v interface{}) (bool, interface{}) {
 		args := PrepareArgs{seq, N}
 		var reply PrepareReply
 		ok := call(peer, "Paxos.AcceptorPrepare", args, &reply)
-		if ok {
-			//log.Printf("me is %v. peer %v prepare_ok: N is %v", px.me, peer, reply.N)
+		if ok && reply.Err == "" {
+			log.Printf("me is %v. peer %v prepare_ok: N is %v", px.me, peer, reply.N)
 			count += 1
 			if reply.N_a > max_n_a {
 				max_n_a = reply.N_a
@@ -144,8 +169,8 @@ func (px *Paxos) Accept(N int, seq int, vp interface{}) bool {
 		args :=	&AcceptArgs{seq, N, vp}
 		var reply AcceptReply
 		ok := call(peer, "Paxos.AcceptorAccept", args, &reply)
-		if ok {
-			//log.Printf("me is %v. peer %v accept_ok", px.me, peer)
+		if ok && reply.Err == "" {
+			log.Printf("me is %v. peer %v accept_ok", px.me, peer)
 			count += 1
 		}
 	}
@@ -162,32 +187,11 @@ func (px *Paxos) Decide(seq int, vp interface{}) {
 		var reply DecidedReply
 		ok := call(peer, "Paxos.AcceptorDecided", args, &reply)
 		if ok {
-			//log.Printf("me is %v. peer %v decided_ok", px.me, peer)
+			log.Printf("me is %v. peer %v decided_ok", px.me, peer)
 		}
 	}
 }
 
-// added by Adrian
-// proposer(v)
-func (px *Paxos) ProposerPropose(seq int, v interface{}) {
-
-	var N = 0
-	var vp = v // this v doesn't matter though
-	var reachMajority = false
-
-	for !reachMajority {
-		reachMajority, vp = px.Prepare(N, seq, v)
-		if !reachMajority {
-			N += 1
-		}
-	}
-	//log.Printf("me is %v. over majority for promise, N is %v, value is: %v", px.me, N, vp)
-
-	if px.Accept(N, seq, vp) == false {
-		return // give up
-	}
-	px.Decide(seq, vp)
-}
 // added by Adrian
 // acceptor's prepare(n) handler
 func (px *Paxos) AcceptorPrepare(args *PrepareArgs, reply *PrepareReply) error {
@@ -196,13 +200,11 @@ func (px *Paxos) AcceptorPrepare(args *PrepareArgs, reply *PrepareReply) error {
 	ins, _ := px.instances.LoadOrStore(args.Seq, &Instance{fate: Pending, n_p: -1, n_a: -1, v_a: nil})
 	inst := ins.(*Instance)
 	if args.N > inst.n_p {
-		//log.Printf("%v, %v", n, inst.n_p)
 		px.instances.Store(args.Seq, &Instance{fate: Pending, n_p: args.N, n_a: inst.n_a, v_a: inst.v_a})
 		reply.N_a = inst.n_a
 		reply.V_a = inst.v_a
 	} else {
-		//log.Printf("PREPARE [%v]: rejection. N: %v, n_p: %v", px.me, args.N, inst.n_p)
-		return errors.New("")
+		reply.Err = "1"
 	}
 	return nil
 }
@@ -216,8 +218,7 @@ func (px *Paxos) AcceptorAccept(args *AcceptArgs, reply *AcceptReply) error {
 	if args.N >= inst.n_p {
 		px.instances.Store(args.Seq, &Instance{fate: Pending, n_p: args.N, n_a: args.N, v_a: args.V_p})
 	} else {
-		//log.Printf("ACCEPT [%v]: rejection. N: %v, n_p: %v", px.me, args.N, inst.n_p)
-		return errors.New("")
+		reply.Err = "2"
 	}
 
 	return nil
@@ -226,7 +227,7 @@ func (px *Paxos) AcceptorAccept(args *AcceptArgs, reply *AcceptReply) error {
 // added by Adrian
 func (px *Paxos) AcceptorDecided(args *DecidedArgs, reply *DecidedReply) error {
 
-	//log.Printf("peer %v decided new seq: %v, value: %v", px.me, args.Seq, args.V_p)
+	log.Printf("peer %v decided new seq: %v, value: %v", px.me, args.Seq, args.V_p)
 	ins, _ := px.instances.Load(args.Seq)
 	inst := ins.(*Instance)
 	px.instances.Store(args.Seq, &Instance{Decided, inst.n_p, inst.n_a, inst.v_a})
