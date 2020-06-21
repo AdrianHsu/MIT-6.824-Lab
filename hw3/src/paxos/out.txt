@@ -1,3 +1,42 @@
+2020/06/21 15:51:38 rpc.Register: method "CommittedToWhom" has 2 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: method "Done" has 2 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: method "Forget" has 2 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: method "Kill" has 1 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: method "Max" has 1 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: method "Min" has 1 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: method "ProposerAccept" has 4 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: method "ProposerDecided" has 4 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: method "ProposerPrepare" has 4 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: reply type of method "ProposerPropose" is not a pointer: "interface {}"
+2020/06/21 15:51:38 rpc.Register: reply type of method "Start" is not a pointer: "interface {}"
+2020/06/21 15:51:38 rpc.Register: method "Status" has 2 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: reply type of method "Update" is not a pointer: "int"
+2020/06/21 15:51:38 rpc.Register: method "CommittedToWhom" has 2 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: method "Done" has 2 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: method "Forget" has 2 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: method "Kill" has 1 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: method "Max" has 1 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: method "Min" has 1 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: method "ProposerAccept" has 4 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: method "ProposerDecided" has 4 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: method "ProposerPrepare" has 4 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: reply type of method "ProposerPropose" is not a pointer: "interface {}"
+2020/06/21 15:51:38 rpc.Register: reply type of method "Start" is not a pointer: "interface {}"
+2020/06/21 15:51:38 rpc.Register: method "Status" has 2 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: reply type of method "Update" is not a pointer: "int"
+2020/06/21 15:51:38 rpc.Register: method "CommittedToWhom" has 2 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: method "Done" has 2 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: method "Forget" has 2 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: method "Kill" has 1 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: method "Max" has 1 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: method "Min" has 1 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: method "ProposerAccept" has 4 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: method "ProposerDecided" has 4 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: method "ProposerPrepare" has 4 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: reply type of method "ProposerPropose" is not a pointer: "interface {}"
+2020/06/21 15:51:38 rpc.Register: reply type of method "Start" is not a pointer: "interface {}"
+2020/06/21 15:51:38 rpc.Register: method "Status" has 2 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: reply type of method "Update" is not a pointer: "int"
 Test: Single proposer ...
   ... Passed
 Test: Many proposers, same value ...
@@ -6,20 +45,295 @@ Test: Many proposers, different values ...
   ... Passed
 Test: Out-of-order instances ...
   ... Passed
+2020/06/21 15:51:38 rpc.Register: method "CommittedToWhom" has 2 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: method "Done" has 2 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: method "Forget" has 2 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: method "Kill" has 1 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: method "Max" has 1 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: method "Min" has 1 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: method "ProposerAccept" has 4 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: method "ProposerDecided" has 4 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: method "ProposerPrepare" has 4 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: reply type of method "ProposerPropose" is not a pointer: "interface {}"
+2020/06/21 15:51:38 rpc.Register: reply type of method "Start" is not a pointer: "interface {}"
+2020/06/21 15:51:38 rpc.Register: method "Status" has 2 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: reply type of method "Update" is not a pointer: "int"
+2020/06/21 15:51:38 rpc.Register: method "CommittedToWhom" has 2 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: method "Done" has 2 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: method "Forget" has 2 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: method "Kill" has 1 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: method "Max" has 1 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: method "Min" has 1 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: method "ProposerAccept" has 4 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: method "ProposerDecided" has 4 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: method "ProposerPrepare" has 4 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: reply type of method "ProposerPropose" is not a pointer: "interface {}"
+2020/06/21 15:51:38 rpc.Register: reply type of method "Start" is not a pointer: "interface {}"
+2020/06/21 15:51:38 rpc.Register: method "Status" has 2 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: reply type of method "Update" is not a pointer: "int"
+2020/06/21 15:51:38 rpc.Register: method "CommittedToWhom" has 2 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: method "Done" has 2 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: method "Forget" has 2 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: method "Kill" has 1 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: method "Max" has 1 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: method "Min" has 1 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: method "ProposerAccept" has 4 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: method "ProposerDecided" has 4 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: method "ProposerPrepare" has 4 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: reply type of method "ProposerPropose" is not a pointer: "interface {}"
+2020/06/21 15:51:38 rpc.Register: reply type of method "Start" is not a pointer: "interface {}"
+2020/06/21 15:51:38 rpc.Register: method "Status" has 2 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: reply type of method "Update" is not a pointer: "int"
+2020/06/21 15:51:38 rpc.Register: method "CommittedToWhom" has 2 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: method "Done" has 2 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: method "Forget" has 2 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: method "Kill" has 1 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: method "Max" has 1 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: method "Min" has 1 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: method "ProposerAccept" has 4 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: method "ProposerDecided" has 4 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: method "ProposerPrepare" has 4 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: reply type of method "ProposerPropose" is not a pointer: "interface {}"
+2020/06/21 15:51:38 rpc.Register: reply type of method "Start" is not a pointer: "interface {}"
+2020/06/21 15:51:38 rpc.Register: method "Status" has 2 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: reply type of method "Update" is not a pointer: "int"
+2020/06/21 15:51:38 rpc.Register: method "CommittedToWhom" has 2 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: method "Done" has 2 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: method "Forget" has 2 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: method "Kill" has 1 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: method "Max" has 1 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: method "Min" has 1 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: method "ProposerAccept" has 4 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: method "ProposerDecided" has 4 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: method "ProposerPrepare" has 4 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: reply type of method "ProposerPropose" is not a pointer: "interface {}"
+2020/06/21 15:51:38 rpc.Register: reply type of method "Start" is not a pointer: "interface {}"
+2020/06/21 15:51:38 rpc.Register: method "Status" has 2 input parameters; needs exactly three
+2020/06/21 15:51:38 rpc.Register: reply type of method "Update" is not a pointer: "int"
 Test: Deaf proposer ...
+paxos Dial() failed: dial unix /var/tmp/824-502/px-90037-deaf-0: connect: no such file or directory
+paxos Dial() failed: dial unix /var/tmp/824-502/px-90037-deaf-4: connect: no such file or directory
+paxos Dial() failed: dial unix /var/tmp/824-502/px-90037-deaf-0: connect: no such file or directory
+paxos Dial() failed: dial unix /var/tmp/824-502/px-90037-deaf-4: connect: no such file or directory
+paxos Dial() failed: dial unix /var/tmp/824-502/px-90037-deaf-0: connect: no such file or directory
+paxos Dial() failed: dial unix /var/tmp/824-502/px-90037-deaf-4: connect: no such file or directory
+paxos Dial() failed: dial unix /var/tmp/824-502/px-90037-deaf-4: connect: no such file or directory
+paxos Dial() failed: dial unix /var/tmp/824-502/px-90037-deaf-4: connect: no such file or directory
+paxos Dial() failed: dial unix /var/tmp/824-502/px-90037-deaf-4: connect: no such file or directory
+paxos Dial() failed: dial unix /var/tmp/824-502/px-90037-deaf-4: connect: no such file or directory
+paxos Dial() failed: dial unix /var/tmp/824-502/px-90037-deaf-0: connect: no such file or directory
+paxos Dial() failed: dial unix /var/tmp/824-502/px-90037-deaf-0: connect: no such file or directory
+paxos Dial() failed: dial unix /var/tmp/824-502/px-90037-deaf-0: connect: no such file or directory
   ... Passed
+unexpected EOF
+2020/06/21 15:51:41 rpc.Register: method "CommittedToWhom" has 2 input parameters; needs exactly three
+2020/06/21 15:51:41 rpc.Register: method "Done" has 2 input parameters; needs exactly three
+2020/06/21 15:51:41 rpc.Register: method "Forget" has 2 input parameters; needs exactly three
+paxos Dial() failed: dial unix /var/tmp/824-502/px-90037-deaf-3: connect: no such file or directory
+2020/06/21 15:51:41 rpc.Register: method "Kill" has 1 input parameters; needs exactly three
+2020/06/21 15:51:41 rpc.Register: method "Max" has 1 input parameters; needs exactly three
+2020/06/21 15:51:41 rpc.Register: method "Min" has 1 input parameters; needs exactly three
+2020/06/21 15:51:41 rpc.Register: method "ProposerAccept" has 4 input parameters; needs exactly three
+2020/06/21 15:51:41 rpc.Register: method "ProposerDecided" has 4 input parameters; needs exactly three
+2020/06/21 15:51:41 rpc.Register: method "ProposerPrepare" has 4 input parameters; needs exactly three
+2020/06/21 15:51:41 rpc.Register: reply type of method "ProposerPropose" is not a pointer: "interface {}"
+2020/06/21 15:51:41 rpc.Register: reply type of method "Start" is not a pointer: "interface {}"
+2020/06/21 15:51:41 rpc.Register: method "Status" has 2 input parameters; needs exactly three
+2020/06/21 15:51:41 rpc.Register: reply type of method "Update" is not a pointer: "int"
+2020/06/21 15:51:41 rpc.Register: method "CommittedToWhom" has 2 input parameters; needs exactly three
+2020/06/21 15:51:41 rpc.Register: method "Done" has 2 input parameters; needs exactly three
+2020/06/21 15:51:41 rpc.Register: method "Forget" has 2 input parameters; needs exactly three
+2020/06/21 15:51:41 rpc.Register: method "Kill" has 1 input parameters; needs exactly three
+2020/06/21 15:51:41 rpc.Register: method "Max" has 1 input parameters; needs exactly three
+2020/06/21 15:51:41 rpc.Register: method "Min" has 1 input parameters; needs exactly three
+2020/06/21 15:51:41 rpc.Register: method "ProposerAccept" has 4 input parameters; needs exactly three
+2020/06/21 15:51:41 rpc.Register: method "ProposerDecided" has 4 input parameters; needs exactly three
+2020/06/21 15:51:41 rpc.Register: method "ProposerPrepare" has 4 input parameters; needs exactly three
+2020/06/21 15:51:41 rpc.Register: reply type of method "ProposerPropose" is not a pointer: "interface {}"
+2020/06/21 15:51:41 rpc.Register: reply type of method "Start" is not a pointer: "interface {}"
+2020/06/21 15:51:41 rpc.Register: method "Status" has 2 input parameters; needs exactly three
+2020/06/21 15:51:41 rpc.Register: reply type of method "Update" is not a pointer: "int"
+2020/06/21 15:51:41 rpc.Register: method "CommittedToWhom" has 2 input parameters; needs exactly three
+2020/06/21 15:51:41 rpc.Register: method "Done" has 2 input parameters; needs exactly three
+2020/06/21 15:51:41 rpc.Register: method "Forget" has 2 input parameters; needs exactly three
+2020/06/21 15:51:41 rpc.Register: method "Kill" has 1 input parameters; needs exactly three
+2020/06/21 15:51:41 rpc.Register: method "Max" has 1 input parameters; needs exactly three
+2020/06/21 15:51:41 rpc.Register: method "Min" has 1 input parameters; needs exactly three
+2020/06/21 15:51:41 rpc.Register: method "ProposerAccept" has 4 input parameters; needs exactly three
+2020/06/21 15:51:41 rpc.Register: method "ProposerDecided" has 4 input parameters; needs exactly three
+2020/06/21 15:51:41 rpc.Register: method "ProposerPrepare" has 4 input parameters; needs exactly three
+2020/06/21 15:51:41 rpc.Register: reply type of method "ProposerPropose" is not a pointer: "interface {}"
+2020/06/21 15:51:41 rpc.Register: reply type of method "Start" is not a pointer: "interface {}"
+2020/06/21 15:51:41 rpc.Register: method "Status" has 2 input parameters; needs exactly three
+2020/06/21 15:51:41 rpc.Register: reply type of method "Update" is not a pointer: "int"
+2020/06/21 15:51:41 rpc.Register: method "CommittedToWhom" has 2 input parameters; needs exactly three
+2020/06/21 15:51:41 rpc.Register: method "Done" has 2 input parameters; needs exactly three
+2020/06/21 15:51:41 rpc.Register: method "Forget" has 2 input parameters; needs exactly three
+2020/06/21 15:51:41 rpc.Register: method "Kill" has 1 input parameters; needs exactly three
+2020/06/21 15:51:41 rpc.Register: method "Max" has 1 input parameters; needs exactly three
+2020/06/21 15:51:41 rpc.Register: method "Min" has 1 input parameters; needs exactly three
+2020/06/21 15:51:41 rpc.Register: method "ProposerAccept" has 4 input parameters; needs exactly three
+2020/06/21 15:51:41 rpc.Register: method "ProposerDecided" has 4 input parameters; needs exactly three
+2020/06/21 15:51:41 rpc.Register: method "ProposerPrepare" has 4 input parameters; needs exactly three
+2020/06/21 15:51:41 rpc.Register: reply type of method "ProposerPropose" is not a pointer: "interface {}"
+2020/06/21 15:51:41 rpc.Register: reply type of method "Start" is not a pointer: "interface {}"
+2020/06/21 15:51:41 rpc.Register: method "Status" has 2 input parameters; needs exactly three
+2020/06/21 15:51:41 rpc.Register: reply type of method "Update" is not a pointer: "int"
+2020/06/21 15:51:41 rpc.Register: method "CommittedToWhom" has 2 input parameters; needs exactly three
+2020/06/21 15:51:41 rpc.Register: method "Done" has 2 input parameters; needs exactly three
+2020/06/21 15:51:41 rpc.Register: method "Forget" has 2 input parameters; needs exactly three
+2020/06/21 15:51:41 rpc.Register: method "Kill" has 1 input parameters; needs exactly three
+2020/06/21 15:51:41 rpc.Register: method "Max" has 1 input parameters; needs exactly three
+2020/06/21 15:51:41 rpc.Register: method "Min" has 1 input parameters; needs exactly three
+2020/06/21 15:51:41 rpc.Register: method "ProposerAccept" has 4 input parameters; needs exactly three
+2020/06/21 15:51:41 rpc.Register: method "ProposerDecided" has 4 input parameters; needs exactly three
+2020/06/21 15:51:41 rpc.Register: method "ProposerPrepare" has 4 input parameters; needs exactly three
+2020/06/21 15:51:41 rpc.Register: reply type of method "ProposerPropose" is not a pointer: "interface {}"
+2020/06/21 15:51:41 rpc.Register: reply type of method "Start" is not a pointer: "interface {}"
+2020/06/21 15:51:41 rpc.Register: method "Status" has 2 input parameters; needs exactly three
+2020/06/21 15:51:41 rpc.Register: reply type of method "Update" is not a pointer: "int"
+2020/06/21 15:51:41 rpc.Register: method "CommittedToWhom" has 2 input parameters; needs exactly three
+2020/06/21 15:51:41 rpc.Register: method "Done" has 2 input parameters; needs exactly three
+2020/06/21 15:51:41 rpc.Register: method "Forget" has 2 input parameters; needs exactly three
+2020/06/21 15:51:41 rpc.Register: method "Kill" has 1 input parameters; needs exactly three
+2020/06/21 15:51:41 rpc.Register: method "Max" has 1 input parameters; needs exactly three
+2020/06/21 15:51:41 rpc.Register: method "Min" has 1 input parameters; needs exactly three
+2020/06/21 15:51:41 rpc.Register: method "ProposerAccept" has 4 input parameters; needs exactly three
+2020/06/21 15:51:41 rpc.Register: method "ProposerDecided" has 4 input parameters; needs exactly three
+2020/06/21 15:51:41 rpc.Register: method "ProposerPrepare" has 4 input parameters; needs exactly three
+2020/06/21 15:51:41 rpc.Register: reply type of method "ProposerPropose" is not a pointer: "interface {}"
+2020/06/21 15:51:41 rpc.Register: reply type of method "Start" is not a pointer: "interface {}"
+2020/06/21 15:51:41 rpc.Register: method "Status" has 2 input parameters; needs exactly three
+2020/06/21 15:51:41 rpc.Register: reply type of method "Update" is not a pointer: "int"
 Test: Forgetting ...
   ... Passed
+2020/06/21 15:51:42 rpc.Register: method "CommittedToWhom" has 2 input parameters; needs exactly three
+2020/06/21 15:51:42 rpc.Register: method "Done" has 2 input parameters; needs exactly three
+2020/06/21 15:51:42 rpc.Register: method "Forget" has 2 input parameters; needs exactly three
+2020/06/21 15:51:42 rpc.Register: method "Kill" has 1 input parameters; needs exactly three
+2020/06/21 15:51:42 rpc.Register: method "Max" has 1 input parameters; needs exactly three
+2020/06/21 15:51:42 rpc.Register: method "Min" has 1 input parameters; needs exactly three
+2020/06/21 15:51:42 rpc.Register: method "ProposerAccept" has 4 input parameters; needs exactly three
+2020/06/21 15:51:42 rpc.Register: method "ProposerDecided" has 4 input parameters; needs exactly three
+2020/06/21 15:51:42 rpc.Register: method "ProposerPrepare" has 4 input parameters; needs exactly three
+2020/06/21 15:51:42 rpc.Register: reply type of method "ProposerPropose" is not a pointer: "interface {}"
+2020/06/21 15:51:42 rpc.Register: reply type of method "Start" is not a pointer: "interface {}"
+2020/06/21 15:51:42 rpc.Register: method "Status" has 2 input parameters; needs exactly three
+2020/06/21 15:51:42 rpc.Register: reply type of method "Update" is not a pointer: "int"
+2020/06/21 15:51:42 rpc.Register: method "CommittedToWhom" has 2 input parameters; needs exactly three
+2020/06/21 15:51:42 rpc.Register: method "Done" has 2 input parameters; needs exactly three
+2020/06/21 15:51:42 rpc.Register: method "Forget" has 2 input parameters; needs exactly three
+2020/06/21 15:51:42 rpc.Register: method "Kill" has 1 input parameters; needs exactly three
+2020/06/21 15:51:42 rpc.Register: method "Max" has 1 input parameters; needs exactly three
+2020/06/21 15:51:42 rpc.Register: method "Min" has 1 input parameters; needs exactly three
+2020/06/21 15:51:42 rpc.Register: method "ProposerAccept" has 4 input parameters; needs exactly three
+2020/06/21 15:51:42 rpc.Register: method "ProposerDecided" has 4 input parameters; needs exactly three
+2020/06/21 15:51:42 rpc.Register: method "ProposerPrepare" has 4 input parameters; needs exactly three
+2020/06/21 15:51:42 rpc.Register: reply type of method "ProposerPropose" is not a pointer: "interface {}"
+2020/06/21 15:51:42 rpc.Register: reply type of method "Start" is not a pointer: "interface {}"
+2020/06/21 15:51:42 rpc.Register: method "Status" has 2 input parameters; needs exactly three
+2020/06/21 15:51:42 rpc.Register: reply type of method "Update" is not a pointer: "int"
+2020/06/21 15:51:42 rpc.Register: method "CommittedToWhom" has 2 input parameters; needs exactly three
+2020/06/21 15:51:42 rpc.Register: method "Done" has 2 input parameters; needs exactly three
+2020/06/21 15:51:42 rpc.Register: method "Forget" has 2 input parameters; needs exactly three
+2020/06/21 15:51:42 rpc.Register: method "Kill" has 1 input parameters; needs exactly three
+2020/06/21 15:51:42 rpc.Register: method "Max" has 1 input parameters; needs exactly three
+2020/06/21 15:51:42 rpc.Register: method "Min" has 1 input parameters; needs exactly three
+2020/06/21 15:51:42 rpc.Register: method "ProposerAccept" has 4 input parameters; needs exactly three
+2020/06/21 15:51:42 rpc.Register: method "ProposerDecided" has 4 input parameters; needs exactly three
+2020/06/21 15:51:42 rpc.Register: method "ProposerPrepare" has 4 input parameters; needs exactly three
+2020/06/21 15:51:42 rpc.Register: reply type of method "ProposerPropose" is not a pointer: "interface {}"
+2020/06/21 15:51:42 rpc.Register: reply type of method "Start" is not a pointer: "interface {}"
+2020/06/21 15:51:42 rpc.Register: method "Status" has 2 input parameters; needs exactly three
+2020/06/21 15:51:42 rpc.Register: reply type of method "Update" is not a pointer: "int"
 Test: Lots of forgetting ...
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+unexpected EOF
+write unix ->/var/tmp/824-502/px-90037-manygc-1: write: socket is not connected
+unexpected EOF
+unexpected EOF
+unexpected EOF
+write unix ->/var/tmp/824-502/px-90037-manygc-1: write: broken pipe
+write unix ->/var/tmp/824-502/px-90037-manygc-1: write: broken pipe
+unexpected EOF
   ... Passed
 Test: Paxos frees forgotten instance memory ...
-  ... Passed
-Test: Paxos Max() after Done()s ...
-  ... Passed
-Test: RPC counts aren't too high ...
-  ... Passed
-Test: Many instances ...
-  ... Passed
-Test: Minority proposal ignored ...
-  ... Passed
-Test: Many instances, unreliable RPC ...
+2020/06/21 15:51:49 rpc.Register: method "CommittedToWhom" has 2 input parameters; needs exactly three
+2020/06/21 15:51:49 rpc.Register: method "Done" has 2 input parameters; needs exactly three
+2020/06/21 15:51:49 rpc.Register: method "Forget" has 2 input parameters; needs exactly three
+2020/06/21 15:51:49 rpc.Register: method "Kill" has 1 input parameters; needs exactly three
+2020/06/21 15:51:49 rpc.Register: method "Max" has 1 input parameters; needs exactly three
+2020/06/21 15:51:49 rpc.Register: method "Min" has 1 input parameters; needs exactly three
+2020/06/21 15:51:49 rpc.Register: method "ProposerAccept" has 4 input parameters; needs exactly three
+2020/06/21 15:51:49 rpc.Register: method "ProposerDecided" has 4 input parameters; needs exactly three
+2020/06/21 15:51:49 rpc.Register: method "ProposerPrepare" has 4 input parameters; needs exactly three
+2020/06/21 15:51:49 rpc.Register: reply type of method "ProposerPropose" is not a pointer: "interface {}"
+2020/06/21 15:51:49 rpc.Register: reply type of method "Start" is not a pointer: "interface {}"
+2020/06/21 15:51:49 rpc.Register: method "Status" has 2 input parameters; needs exactly three
+2020/06/21 15:51:49 rpc.Register: reply type of method "Update" is not a pointer: "int"
+2020/06/21 15:51:49 rpc.Register: method "CommittedToWhom" has 2 input parameters; needs exactly three
+2020/06/21 15:51:49 rpc.Register: method "Done" has 2 input parameters; needs exactly three
+2020/06/21 15:51:49 rpc.Register: method "Forget" has 2 input parameters; needs exactly three
+2020/06/21 15:51:49 rpc.Register: method "Kill" has 1 input parameters; needs exactly three
+2020/06/21 15:51:49 rpc.Register: method "Max" has 1 input parameters; needs exactly three
+2020/06/21 15:51:49 rpc.Register: method "Min" has 1 input parameters; needs exactly three
+2020/06/21 15:51:49 rpc.Register: method "ProposerAccept" has 4 input parameters; needs exactly three
+2020/06/21 15:51:49 rpc.Register: method "ProposerDecided" has 4 input parameters; needs exactly three
+2020/06/21 15:51:49 rpc.Register: method "ProposerPrepare" has 4 input parameters; needs exactly three
+2020/06/21 15:51:49 rpc.Register: reply type of method "ProposerPropose" is not a pointer: "interface {}"
+2020/06/21 15:51:49 rpc.Register: reply type of method "Start" is not a pointer: "interface {}"
+2020/06/21 15:51:49 rpc.Register: method "Status" has 2 input parameters; needs exactly three
+2020/06/21 15:51:49 rpc.Register: reply type of method "Update" is not a pointer: "int"
+2020/06/21 15:51:49 rpc.Register: method "CommittedToWhom" has 2 input parameters; needs exactly three
+2020/06/21 15:51:49 rpc.Register: method "Done" has 2 input parameters; needs exactly three
+2020/06/21 15:51:49 rpc.Register: method "Forget" has 2 input parameters; needs exactly three
+2020/06/21 15:51:49 rpc.Register: method "Kill" has 1 input parameters; needs exactly three
+2020/06/21 15:51:49 rpc.Register: method "Max" has 1 input parameters; needs exactly three
+2020/06/21 15:51:49 rpc.Register: method "Min" has 1 input parameters; needs exactly three
+2020/06/21 15:51:49 rpc.Register: method "ProposerAccept" has 4 input parameters; needs exactly three
+2020/06/21 15:51:49 rpc.Register: method "ProposerDecided" has 4 input parameters; needs exactly three
+2020/06/21 15:51:49 rpc.Register: method "ProposerPrepare" has 4 input parameters; needs exactly three
+2020/06/21 15:51:49 rpc.Register: reply type of method "ProposerPropose" is not a pointer: "interface {}"
+2020/06/21 15:51:49 rpc.Register: reply type of method "Start" is not a pointer: "interface {}"
+2020/06/21 15:51:49 rpc.Register: method "Status" has 2 input parameters; needs exactly three
+2020/06/21 15:51:49 rpc.Register: reply type of method "Update" is not a pointer: "int"

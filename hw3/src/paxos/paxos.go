@@ -125,7 +125,7 @@ func (px *Paxos) ProposerPropose(seq int, v interface{}) {
 	var N = 1 << uint(px.me + 20)
 	now := time.Now()
 	for !decided {
-		if px.isdead() || time.Now().Sub(now).Seconds() > time.Duration(15 * time.Second).Seconds() {
+		if px.isdead() || time.Now().Sub(now).Seconds() > time.Duration(30 * time.Second).Seconds() {
 			//log.Printf("isdead, killed: %v", px.peers[px.me])
 			px.Kill()
 			return
