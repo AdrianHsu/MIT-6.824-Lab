@@ -15,6 +15,7 @@ type PrepareReply struct {
 	N_a         int
 	V_a         interface{}
 	Z_i         int
+	Higher_N    int
 }
 
 type AcceptArgs struct {

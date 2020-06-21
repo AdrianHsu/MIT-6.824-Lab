@@ -1,6 +1,7 @@
 package paxos
 
 import (
+	"log"
 	"testing"
 )
 import "runtime"
@@ -827,7 +828,6 @@ func TestPartition(t *testing.T) {
 
 	for iters := 0; iters < 20; iters++ {
 		seq++
-
 		for i := 0; i < npaxos; i++ {
 			pxa[i].setunreliable(true)
 		}
@@ -848,6 +848,7 @@ func TestPartition(t *testing.T) {
 		}
 
 		waitn(t, pxa, seq, 5)
+		log.Printf("iters: %v", iters)
 	}
 
 	fmt.Printf("  ... Passed\n")

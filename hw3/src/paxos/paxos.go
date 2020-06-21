@@ -23,6 +23,7 @@ package paxos
 import (
 	"math"
 	"net"
+	"time"
 )
 import "net/rpc"
 import "log"
@@ -111,44 +112,56 @@ func call(srv string, name string, args interface{}, reply interface{}) bool {
 	return false
 }
 
+func (px *Paxos) CommittedToWhom(N int) int {
+	var N0 = N >> 20
+	return int(math.Log2(float64(N0)))
+}
+
 // added by Adrian
 // proposer(v)
 func (px *Paxos) ProposerPropose(seq int, v interface{}) {
 
-	var N = 1 << px.me
-	var vp = v // this v doesn't matter though
 	var decided = false
-
+	var N = 1 << (px.me + 20)
 	for !decided {
+		var vp = v // this v doesn't matter though
 		var reachMajority = false
+		var highest_n = N
 		vp = v
-		reachMajority, vp = px.ProposerPrepare(N, seq, v)
+		reachMajority, vp, highest_n = px.ProposerPrepare(N, seq, v)
 		if !reachMajority {
-			N += 1
+			N = highest_n + 1
+			id := px.CommittedToWhom(highest_n)
+			// log.Printf("id: %v", id)
+			// Race condition prevent liveness
+			// Solution: back off period chosen based on ordering
+			if id > px.me {
+				waitTime := 100 * (id + 3)
+				time.Sleep(time.Millisecond * time.Duration(waitTime))
+			}
 			continue
 		}
 
 		px.Forget(px.Min())
-		//log.Printf("proposer is %v. reach majority for [prepare]. seq is %v, N is %v, value is: %v", px.me, seq, N, vp)
+		log.Printf("proposer is %v. reach majority for [prepare]. seq is %v, N is %v", px.me, seq, N)
 
 		if px.ProposerAccept(N, seq, vp) == false {
-			N += 1
+			time.Sleep(time.Millisecond * 100)
 			continue
 		}
-		//log.Printf("proposer is %v. reach majority for [accept]. seq is %v, N is %v, value is: %v", px.me, seq, N, vp)
-		if px.ProposerDecided(N, seq, vp) == false {
-			// do nothing
-		}
-		//log.Printf("proposer is %v. reach majority for [decided]. seq is %v, N is %v, value is: %v", px.me, seq, N, vp)
+		log.Printf("proposer is %v. reach majority for [accept]. seq is %v, N is %v", px.me, seq, N,)
+		px.ProposerDecided(N, seq, vp)
+		log.Printf("proposer is %v. reach majority for [decided]. seq is %v, N is %v", px.me, seq, N)
 		decided = true
 	}
 }
 // added by Adrian
-func (px *Paxos) ProposerPrepare(N int, seq int, v interface{}) (bool, interface{}) {
+func (px *Paxos) ProposerPrepare(N int, seq int, v interface{}) (bool, interface{}, int) {
 
 	var count = 0
 	var max_n_a = -1
 	var v_prime = v
+	var highest_n = N
 	for i, peer := range px.peers {
 		args := &PrepareArgs{seq, N}
 		var reply PrepareReply
@@ -159,6 +172,7 @@ func (px *Paxos) ProposerPrepare(N int, seq int, v interface{}) (bool, interface
 		} else {
 			ok = call(peer, "Paxos.AcceptorPrepare", args, &reply)
 		}
+
 		if ok && reply.Err == "" {
 			//log.Printf("me is %v. peer %v prepare_ok: N is %v", px.me, peer, reply.N)
 			count += 1
@@ -168,13 +182,16 @@ func (px *Paxos) ProposerPrepare(N int, seq int, v interface{}) (bool, interface
 			}
 			px.Update(reply.Z_i, i)
 		} else {
-			//log.Printf("no reply. me: %v, peer: %v", px.me, peer)
+			//log.Printf("prepare failed. me: %v, peer: %v", px.me, peer)
+			if reply.Higher_N > highest_n {
+				highest_n = reply.Higher_N
+			}
 		}
 	}
 	if count < (len(px.peers) + 1)/ 2 {
-		return false, 0
+		return false, 0, highest_n
 	}
-	return true, v_prime
+	return true, v_prime, 0
 }
 
 // added by Adrian
@@ -238,10 +255,12 @@ func (px *Paxos) AcceptorPrepare(args *PrepareArgs, reply *PrepareReply) error {
 	if args.N > inst.n_p {
 		px.instances.Store(args.Seq, &Instance{fate: Pending, n_p: args.N, n_a: inst.n_a, v_a: inst.v_a})
 		var doneValue, _ = px.doneValues.Load(px.me)
+		reply.Higher_N = args.N
 		reply.Z_i = doneValue.(int)
 		reply.N_a = inst.n_a
 		reply.V_a = inst.v_a
 	} else {
+		reply.Higher_N = inst.n_p
 		reply.Err = "1"
 	}
 	return nil
@@ -258,7 +277,6 @@ func (px *Paxos) AcceptorAccept(args *AcceptArgs, reply *AcceptReply) error {
 	} else {
 		reply.Err = "2"
 	}
-
 	return nil
 }
 
