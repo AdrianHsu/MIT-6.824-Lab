@@ -123,7 +123,13 @@ func (px *Paxos) ProposerPropose(seq int, v interface{}) {
 
 	var decided = false
 	var N = 1 << (px.me + 20)
+
 	for !decided {
+		if px.isdead() {
+			log.Printf("isdead, killed: %v", px.peers[px.me])
+			px.Kill()
+			return
+		}
 		var vp = v // this v doesn't matter though
 		var reachMajority = false
 		var highest_n = N
@@ -165,6 +171,7 @@ func (px *Paxos) ProposerPrepare(N int, seq int, v interface{}) (bool, interface
 	var v_prime = v
 	var highest_n = N
 	for i, peer := range px.peers {
+
 		args := &PrepareArgs{seq, N}
 		var reply PrepareReply
 		var ok = false
