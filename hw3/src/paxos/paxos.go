@@ -129,15 +129,18 @@ func (px *Paxos) ProposerPropose(seq int, v interface{}) {
 		}
 
 		px.Forget(px.Min())
-		//log.Printf("proposer is %v. reach majority for [prepare]. seq is %v, N is %v, value is: %v", px.me, seq, N, vp)
+		log.Printf("proposer is %v. reach majority for [prepare]. seq is %v, N is %v, value is: %v", px.me, seq, N, vp)
 
 		if px.ProposerAccept(N, seq, vp) == false {
 			N += 1
 			continue
 		}
-		//log.Printf("proposer is %v. reach majority for [accept]. seq is %v, N is %v, value is: %v", px.me, seq, N, vp)
-		px.ProposerDecided(N, seq, vp)
-		//log.Printf("proposer is %v. reach majority for [decided]. seq is %v, N is %v, value is: %v", px.me, seq, N, vp)
+		log.Printf("proposer is %v. reach majority for [accept]. seq is %v, N is %v, value is: %v", px.me, seq, N, vp)
+		if px.ProposerDecided(N, seq, vp) == false {
+			N += 1
+			continue
+		}
+		log.Printf("proposer is %v. reach majority for [decided]. seq is %v, N is %v, value is: %v", px.me, seq, N, vp)
 		decided = true
 	}
 }
