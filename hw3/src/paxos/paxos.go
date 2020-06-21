@@ -21,9 +21,9 @@ package paxos
 //
 
 import (
+	"errors"
+	"math"
 	"net"
-	"strconv"
-	"strings"
 )
 import "net/rpc"
 import "log"
@@ -73,7 +73,7 @@ type Paxos struct {
 
 	// Your data here.
 	instances  sync.Map
-	// acceptor's state
+	doneValues sync.Map
 }
 
 //
@@ -141,12 +141,11 @@ func (px *Paxos) ProposerPrepare(N int, seq int, v interface{}) (bool, interface
 	var count = 0
 	var max_n_a = -1
 	var v_prime = v
-	for _, peer := range px.peers {
+	for i, peer := range px.peers {
 		args := &PrepareArgs{seq, N}
 		var reply PrepareReply
-		var res = strings.Split(peer, "-")
 		var ok = false
-		if res[len(res) - 1] == strconv.Itoa(px.me) {
+		if i == px.me {
 			px.AcceptorPrepare(args, &reply)
 			ok = true
 		} else {
@@ -175,12 +174,11 @@ func (px *Paxos) ProposerPrepare(N int, seq int, v interface{}) (bool, interface
 // added by Adrian
 func (px *Paxos) ProposerAccept(N int, seq int, vp interface{}) bool {
 	var count = 0
-	for _, peer := range px.peers {
+	for i, peer := range px.peers {
 		args :=	&AcceptArgs{seq, N, vp}
 		var reply AcceptReply
 		var ok = false
-		var res = strings.Split(peer, "-")
-		if res[len(res) - 1] == strconv.Itoa(px.me) {
+		if i == px.me {
 			px.AcceptorAccept(args, &reply)
 			ok = true
 		} else {
@@ -199,12 +197,11 @@ func (px *Paxos) ProposerAccept(N int, seq int, vp interface{}) bool {
 }
 
 func (px *Paxos) ProposerDecided(seq int, vp interface{}) {
-	for _, peer := range px.peers {
+	for i, peer := range px.peers {
 		args :=	&DecidedArgs{seq,vp}
 		var reply DecidedReply
-		var res = strings.Split(peer, "-")
 		var ok = false
-		if res[len(res) - 1] == strconv.Itoa(px.me) {
+		if i == px.me {
 			px.AcceptorDecided(args, &reply)
 			ok = true
 		} else {
@@ -238,7 +235,10 @@ func (px *Paxos) AcceptorAccept(args *AcceptArgs, reply *AcceptReply) error {
 
 	reply.N = args.N
 	ins, _ := px.instances.Load(args.Seq)
-	inst := ins.(*Instance) // ins should never be nil
+	if ins == nil {
+		return errors.New("instance should not be nil if it was promised")
+	}
+	inst := ins.(*Instance)
 	if args.N >= inst.n_p {
 		px.instances.Store(args.Seq, &Instance{fate: Pending, n_p: args.N, n_a: args.N, v_a: args.V_p})
 	} else {
@@ -253,6 +253,9 @@ func (px *Paxos) AcceptorDecided(args *DecidedArgs, reply *DecidedReply) error {
 
 	//log.Printf("peer %v decided new seq: %v, value: %v", px.me, args.Seq, args.V_p)
 	ins, _ := px.instances.Load(args.Seq)
+	if ins == nil {
+		return errors.New("instance should not be nil if it was promised")
+	}
 	inst := ins.(*Instance)
 	px.instances.Store(args.Seq, &Instance{Decided, inst.n_p, inst.n_a, inst.v_a})
 	return nil
@@ -277,6 +280,16 @@ func (px *Paxos) Start(seq int, v interface{}) {
 
 }
 
+// added by Adrian
+func (px *Paxos) Share(args *ShareArgs, reply *ShareReply) error {
+
+	old, _ := px.doneValues.Load(args.Me)
+	if args.Seq > old.(int) {
+		px.doneValues.Store(args.Me, args.Seq)
+	}
+	return nil
+}
+
 //
 // the application on this machine is done with
 // all instances <= seq.
@@ -285,6 +298,21 @@ func (px *Paxos) Start(seq int, v interface{}) {
 //
 func (px *Paxos) Done(seq int) {
 	// Your code here.
+
+	for i, peer := range px.peers {
+		args :=	&ShareArgs{seq,px.me}
+		var reply ShareReply
+		var ok = false
+		if i == px.me {
+			px.Share(args, &reply)
+			ok = true
+		} else {
+			ok = call(peer, "Paxos.Share", args, &reply)
+		}
+		if !ok {
+			//log.Printf("doneValue sharing unreachable: %v", peer)
+		}
+	}
 }
 
 //
@@ -304,11 +332,25 @@ func (px *Paxos) Max() int {
 
 	return max
 }
+// added by Adrian
+func (px *Paxos) Forget(args *ForgetArgs, reply *ForgetReply) error {
+	sli := []int{}
+	px.instances.Range(func(k, v interface{}) bool { // seq is the key
+		if k.(int) < (args.Z_i + 1) {
+			sli = append(sli, k.(int))
+		}
+		return true
+	})
 
+	for k := range sli {
+		px.instances.Delete(k)
+	}
+	return nil
+}
 //
 // Min() should return one more than the minimum among z_i,
 // where z_i is the highest number ever passed
-// to Done() on peer i. A peers z_i is -1 if it has
+// to Done() on peer i. A peer's z_i is -1 if it has
 // never called Done().
 //
 // Paxos is required to have forgotten all information
@@ -335,7 +377,32 @@ func (px *Paxos) Max() int {
 //
 func (px *Paxos) Min() int {
 	// You code here.
-	return 0
+	var min = math.MaxInt32
+	px.doneValues.Range(func(k, v interface{}) bool { // seq is the key
+		if v.(int) < min {
+			min = v.(int)
+		}
+		return true
+	})
+
+	//go func(min int) {
+	//	for i, peer := range px.peers {
+	//		args :=	&ForgetArgs{Z_i: min}
+	//		var reply ForgetReply
+	//		var ok = false
+	//		if i == px.me {
+	//			px.Forget(args, &reply)
+	//			ok = true
+	//		} else {
+	//			//log.Printf("forgot: %v", peer)
+	//			ok = call(peer, "Paxos.Forget", args, &reply)
+	//		}
+	//		if !ok {
+	//			//log.Printf("forgetting unreachable: %v", peer)
+	//		}
+	//	}
+	//}(min)
+	return min + 1
 }
 
 //
@@ -398,9 +465,13 @@ func Make(peers []string, me int, rpcs *rpc.Server) *Paxos {
 	px.peers = peers
 	px.me = me
 
-
 	// Your initialization code here.
 	px.instances = sync.Map{}
+	px.doneValues = sync.Map{}
+
+	for peer := range px.peers {
+		px.doneValues.Store(peer, -1)
+	}
 
 	if rpcs != nil {
 		// caller will create socket &c

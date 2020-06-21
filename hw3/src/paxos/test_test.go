@@ -269,7 +269,7 @@ func TestForget(t *testing.T) {
 	for i := 0; i < npaxos; i++ {
 		pxa[i].Done(0)
 	}
-	for i := 1; i < npaxos; i++ {
+	for i := 1; i < npaxos; i++ { // i starts from 1 -> not all pxa did this!
 		pxa[i].Done(1)
 	}
 	for i := 0; i < npaxos; i++ {

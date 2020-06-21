@@ -35,3 +35,20 @@ type DecidedArgs struct {
 type DecidedReply struct {
 	Err         Err
 }
+
+type ShareArgs struct {
+	Seq         int
+	Me          int
+}
+
+type ShareReply struct {
+	Err         Err
+}
+
+type ForgetArgs struct {
+	Z_i         int
+}
+
+type ForgetReply struct {
+	Err         Err
+}
