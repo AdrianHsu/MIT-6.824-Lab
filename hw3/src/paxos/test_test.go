@@ -1,7 +1,6 @@
 package paxos
 
 import (
-	"log"
 	"testing"
 )
 import "runtime"
@@ -48,7 +47,7 @@ func ndecided(t *testing.T, pxa []*Paxos, seq int) int {
 			}
 		}
 	}
-	log.Printf("count: %v", count)
+	//log.Printf("count: %v", count)
 	return count
 }
 
