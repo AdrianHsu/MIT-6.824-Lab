@@ -126,7 +126,7 @@ func (px *Paxos) ProposerPropose(seq int, v interface{}) {
 
 	for !decided {
 		if px.isdead() {
-			log.Printf("isdead, killed: %v", px.peers[px.me])
+			//log.Printf("isdead, killed: %v", px.peers[px.me])
 			px.Kill()
 			return
 		}
