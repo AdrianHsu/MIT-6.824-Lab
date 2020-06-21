@@ -115,25 +115,31 @@ func call(srv string, name string, args interface{}, reply interface{}) bool {
 // proposer(v)
 func (px *Paxos) ProposerPropose(seq int, v interface{}) {
 
-	var N = 0
+	var N = 1 << px.me
 	var vp = v // this v doesn't matter though
-	var reachMajority = false
-	for !reachMajority {
-		var v_prime = v
-		reachMajority, v_prime = px.ProposerPrepare(N, seq, v)
+	var decided = false
+
+	for !decided {
+		var reachMajority = false
+		vp = v
+		reachMajority, vp = px.ProposerPrepare(N, seq, v)
 		if !reachMajority {
 			N += 1
-		} else {
-			vp = v_prime
+			continue
 		}
-	}
-	px.Forget(px.Min())
-	//log.Printf("me is %v. reach majority for promise. N is %v, value is: %v", px.me, N, vp)
 
-	if px.ProposerAccept(N, seq, vp) == false {
-		return // give up
+		px.Forget(px.Min())
+		//log.Printf("proposer is %v. reach majority for [prepare]. seq is %v, N is %v, value is: %v", px.me, seq, N, vp)
+
+		if px.ProposerAccept(N, seq, vp) == false {
+			N += 1
+			continue
+		}
+		//log.Printf("proposer is %v. reach majority for [accept]. seq is %v, N is %v, value is: %v", px.me, seq, N, vp)
+		px.ProposerDecided(N, seq, vp)
+		//log.Printf("proposer is %v. reach majority for [decided]. seq is %v, N is %v, value is: %v", px.me, seq, N, vp)
+		decided = true
 	}
-	px.ProposerDecided(N, seq, vp)
 }
 // added by Adrian
 func (px *Paxos) ProposerPrepare(N int, seq int, v interface{}) (bool, interface{}) {
@@ -152,7 +158,7 @@ func (px *Paxos) ProposerPrepare(N int, seq int, v interface{}) (bool, interface
 			ok = call(peer, "Paxos.AcceptorPrepare", args, &reply)
 		}
 		if ok && reply.Err == "" {
-			log.Printf("me is %v. peer %v prepare_ok: N is %v", px.me, peer, reply.N)
+			//log.Printf("me is %v. peer %v prepare_ok: N is %v", px.me, peer, reply.N)
 			count += 1
 			if reply.N_a > max_n_a {
 				max_n_a = reply.N_a
@@ -183,7 +189,7 @@ func (px *Paxos) ProposerAccept(N int, seq int, vp interface{}) bool {
 			ok = call(peer, "Paxos.AcceptorAccept", args, &reply)
 		}
 		if ok && reply.Err == "" {
-			log.Printf("me is %v. peer %v accept_ok", px.me, peer)
+			//log.Printf("me is %v. peer %v accept_ok", px.me, peer)
 			count += 1
 		}
 	}
@@ -193,7 +199,7 @@ func (px *Paxos) ProposerAccept(N int, seq int, vp interface{}) bool {
 	return true
 }
 
-func (px *Paxos) ProposerDecided(N int, seq int, vp interface{}) {
+func (px *Paxos) ProposerDecided(N int, seq int, vp interface{}) bool {
 	var count = 0
 	for i, peer := range px.peers {
 		args :=	&DecidedArgs{seq,N, vp}
@@ -206,7 +212,7 @@ func (px *Paxos) ProposerDecided(N int, seq int, vp interface{}) {
 			ok = call(peer, "Paxos.AcceptorDecided", args, &reply)
 		}
 		if ok {
-			log.Printf("me is %v. peer %v decided_ok", px.me, peer)
+			//log.Printf("me is %v. peer %v decided_ok", px.me, peer)
 			count += 1
 		} else {
 			// So if a peer is dead
@@ -214,9 +220,10 @@ func (px *Paxos) ProposerDecided(N int, seq int, vp interface{}) {
 			// even if all reachable peers call Done.
 		}
 	}
-	if count == len(px.peers) {
-		// do something
+	if count < (len(px.peers) + 1)/ 2 {
+		return false
 	}
+	return true
 }
 
 // added by Adrian
@@ -272,6 +279,9 @@ func (px *Paxos) Start(seq int, v interface{}) {
 	// Your code here.
 
 	go func(seq int, v interface{}) {
+		if seq < px.Min() {
+			return
+		}
 		px.ProposerPropose(seq, v)
 	}(seq, v)
 
@@ -320,7 +330,6 @@ func (px *Paxos) Max() int {
 // added by Adrian
 func (px *Paxos) Forget(min int) error {
 	sli := []int{}
-	log.Printf("%v, %v", px.me, min)
 	px.instances.Range(func(k, v interface{}) bool { // seq is the key
 		if k.(int) < min {
 			sli = append(sli, k.(int))

@@ -1,6 +1,9 @@
 package paxos
 
-import "testing"
+import (
+	"log"
+	"testing"
+)
 import "runtime"
 import "strconv"
 import "os"
@@ -45,6 +48,7 @@ func ndecided(t *testing.T, pxa []*Paxos, seq int) int {
 			}
 		}
 	}
+	log.Printf("count: %v", count)
 	return count
 }
 
@@ -690,6 +694,7 @@ func TestManyUnreliable(t *testing.T) {
 		}
 		for i := 0; i < npaxos; i++ {
 			pxa[i].Start(seq, (seq*10)+i)
+			//log.Printf("%v", seq*10 + i)
 		}
 	}
 
