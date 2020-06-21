@@ -127,6 +127,7 @@ func (px *Paxos) ProposerPropose(seq int, v interface{}) {
 			vp = v_prime
 		}
 	}
+	px.Forget(px.Min())
 	//log.Printf("me is %v. reach majority for promise. N is %v, value is: %v", px.me, N, vp)
 
 	if px.ProposerAccept(N, seq, vp) == false {
@@ -141,8 +142,7 @@ func (px *Paxos) ProposerPrepare(N int, seq int, v interface{}) (bool, interface
 	var max_n_a = -1
 	var v_prime = v
 	for i, peer := range px.peers {
-		var doneValue, _ = px.doneValues.Load(px.me)
-		args := &PrepareArgs{seq, N, doneValue.(int), px.me}
+		args := &PrepareArgs{seq, N}
 		var reply PrepareReply
 		var ok = false
 		if i == px.me {
@@ -158,7 +158,7 @@ func (px *Paxos) ProposerPrepare(N int, seq int, v interface{}) (bool, interface
 				max_n_a = reply.N_a
 				v_prime = reply.V_a
 			}
-
+			px.Update(reply.Z_i, i)
 		} else {
 			//log.Printf("no reply. me: %v, peer: %v", px.me, peer)
 		}
@@ -194,6 +194,7 @@ func (px *Paxos) ProposerAccept(N int, seq int, vp interface{}) bool {
 }
 
 func (px *Paxos) ProposerDecided(N int, seq int, vp interface{}) {
+	var count = 0
 	for i, peer := range px.peers {
 		args :=	&DecidedArgs{seq,N, vp}
 		var reply DecidedReply
@@ -206,7 +207,15 @@ func (px *Paxos) ProposerDecided(N int, seq int, vp interface{}) {
 		}
 		if ok {
 			log.Printf("me is %v. peer %v decided_ok", px.me, peer)
+			count += 1
+		} else {
+			// So if a peer is dead
+			// or unreachable, other peers Min()s will not increase
+			// even if all reachable peers call Done.
 		}
+	}
+	if count == len(px.peers) {
+		// do something
 	}
 }
 
@@ -215,11 +224,12 @@ func (px *Paxos) ProposerDecided(N int, seq int, vp interface{}) {
 func (px *Paxos) AcceptorPrepare(args *PrepareArgs, reply *PrepareReply) error {
 
 	reply.N = args.N
-	px.Share(args.Z_i, args.Proposer)
 	ins, _ := px.instances.LoadOrStore(args.Seq, &Instance{fate: Pending, n_p: -1, n_a: -1, v_a: nil})
 	inst := ins.(*Instance)
 	if args.N > inst.n_p {
 		px.instances.Store(args.Seq, &Instance{fate: Pending, n_p: args.N, n_a: inst.n_a, v_a: inst.v_a})
+		var doneValue, _ = px.doneValues.Load(px.me)
+		reply.Z_i = doneValue.(int)
 		reply.N_a = inst.n_a
 		reply.V_a = inst.v_a
 	} else {
@@ -260,20 +270,18 @@ func (px *Paxos) AcceptorDecided(args *DecidedArgs, reply *DecidedReply) error {
 //
 func (px *Paxos) Start(seq int, v interface{}) {
 	// Your code here.
-	min := px.Min()
-	if seq < min {
-		return
-	}
+
 	go func(seq int, v interface{}) {
 		px.ProposerPropose(seq, v)
 	}(seq, v)
 
 }
 
-func (px *Paxos) Share(seq int, i int) {
+// added by Adrian
+func (px *Paxos) Update(z_i int, i int) {
 	old, _ := px.doneValues.Load(i)
-	if seq > old.(int) {
-		px.doneValues.Store(i, seq)
+	if z_i > old.(int) {
+		px.doneValues.Store(i, z_i)
 	}
 }
 
@@ -310,10 +318,11 @@ func (px *Paxos) Max() int {
 	return max
 }
 // added by Adrian
-func (px *Paxos) Forget(args *ForgetArgs, reply *ForgetReply) error {
+func (px *Paxos) Forget(min int) error {
 	sli := []int{}
+	log.Printf("%v, %v", px.me, min)
 	px.instances.Range(func(k, v interface{}) bool { // seq is the key
-		if k.(int) < (args.Z_i + 1) {
+		if k.(int) < min {
 			sli = append(sli, k.(int))
 		}
 		return true
@@ -361,21 +370,7 @@ func (px *Paxos) Min() int {
 		}
 		return true
 	})
-	for i, peer := range px.peers {
-		args :=	&ForgetArgs{Z_i: min}
-		var reply ForgetReply
-		var ok = false
-		if i == px.me {
-			px.Forget(args, &reply)
-			ok = true
-		} else {
-			//log.Printf("forgot: %v", peer)
-			ok = call(peer, "Paxos.Forget", args, &reply)
-		}
-		if !ok {
-			//log.Printf("forgetting unreachable: %v", peer)
-		}
-	}
+
 	return min + 1
 }
 
