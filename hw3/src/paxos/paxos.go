@@ -137,7 +137,7 @@ func (px *Paxos) ProposerPropose(seq int, v interface{}) {
 		}
 		//log.Printf("proposer is %v. reach majority for [accept]. seq is %v, N is %v, value is: %v", px.me, seq, N, vp)
 		if px.ProposerDecided(N, seq, vp) == false {
-
+			// do nothing
 		}
 		//log.Printf("proposer is %v. reach majority for [decided]. seq is %v, N is %v, value is: %v", px.me, seq, N, vp)
 		decided = true
@@ -254,7 +254,7 @@ func (px *Paxos) AcceptorAccept(args *AcceptArgs, reply *AcceptReply) error {
 	ins, _ := px.instances.LoadOrStore(args.Seq, &Instance{fate: Pending, n_p: -1, n_a: -1, v_a: nil})
 	inst := ins.(*Instance)
 	if args.N >= inst.n_p {
-		px.instances.Store(args.Seq, &Instance{fate: Pending, n_p: args.N, n_a: args.N, v_a: args.V_p})
+		px.instances.Store(args.Seq, &Instance{fate: Decided, n_p: args.N, n_a: args.N, v_a: args.V_p})
 	} else {
 		reply.Err = "2"
 	}
