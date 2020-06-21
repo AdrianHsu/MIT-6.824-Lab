@@ -135,6 +135,8 @@ func (px *Paxos) ProposerPropose(seq int, v interface{}) {
 			// log.Printf("id: %v", id)
 			// Race condition prevent liveness
 			// Solution: back off period chosen based on ordering
+			// if the current committed proposer's id is larger than mine
+			// -> "alright, I will back off and wait for it!"
 			if id > px.me {
 				waitTime := 100 * (id + 3)
 				time.Sleep(time.Millisecond * time.Duration(waitTime))
@@ -143,15 +145,15 @@ func (px *Paxos) ProposerPropose(seq int, v interface{}) {
 		}
 
 		px.Forget(px.Min())
-		log.Printf("proposer is %v. reach majority for [prepare]. seq is %v, N is %v", px.me, seq, N)
+		//log.Printf("proposer is %v. reach majority for [prepare]. seq is %v, N is %v", px.me, seq, N)
 
 		if px.ProposerAccept(N, seq, vp) == false {
 			time.Sleep(time.Millisecond * 100)
 			continue
 		}
-		log.Printf("proposer is %v. reach majority for [accept]. seq is %v, N is %v", px.me, seq, N,)
+		//log.Printf("proposer is %v. reach majority for [accept]. seq is %v, N is %v", px.me, seq, N,)
 		px.ProposerDecided(N, seq, vp)
-		log.Printf("proposer is %v. reach majority for [decided]. seq is %v, N is %v", px.me, seq, N)
+		//log.Printf("proposer is %v. reach majority for [decided]. seq is %v, N is %v", px.me, seq, N)
 		decided = true
 	}
 }
