@@ -7,8 +7,6 @@ type Err string
 type PrepareArgs struct {
 	Seq         int
 	N           int
-	Z_i         int
-	Proposer    int
 }
 
 type PrepareReply struct {
@@ -31,7 +29,10 @@ type AcceptReply struct {
 
 type DecidedArgs struct {
 	Seq           int
-	V_p          interface{}
+	N             int
+	V_p           interface{}
+	Z_i         int
+	Proposer    int
 }
 
 type DecidedReply struct {

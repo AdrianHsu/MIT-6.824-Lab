@@ -21,7 +21,6 @@ package paxos
 //
 
 import (
-	"errors"
 	"math"
 	"net"
 )
@@ -133,7 +132,7 @@ func (px *Paxos) ProposerPropose(seq int, v interface{}) {
 	if px.ProposerAccept(N, seq, vp) == false {
 		return // give up
 	}
-	px.ProposerDecided(seq, vp)
+	px.ProposerDecided(N, seq, vp)
 }
 // added by Adrian
 func (px *Paxos) ProposerPrepare(N int, seq int, v interface{}) (bool, interface{}) {
@@ -141,9 +140,8 @@ func (px *Paxos) ProposerPrepare(N int, seq int, v interface{}) (bool, interface
 	var count = 0
 	var max_n_a = -1
 	var v_prime = v
-	var doneValue, _ = px.doneValues.Load(px.me)
 	for i, peer := range px.peers {
-		args := &PrepareArgs{seq, N, doneValue.(int), px.me}
+		args := &PrepareArgs{seq, N}
 		var reply PrepareReply
 		var ok = false
 		if i == px.me {
@@ -159,17 +157,15 @@ func (px *Paxos) ProposerPrepare(N int, seq int, v interface{}) (bool, interface
 				max_n_a = reply.N_a
 				v_prime = reply.V_a
 			}
+			if count >= (len(px.peers) + 1)/ 2 {
+				return true, v_prime
+			}
 		} else {
 			//log.Printf("no reply. me: %v, peer: %v", px.me, peer)
 		}
 	}
 
-	//log.Printf("count %v", count)
-	if count < (len(px.peers) + 1)/ 2 {
-		return false, 0
-	}
-
-	return true, v_prime
+	return false, 0
 }
 
 // added by Adrian
@@ -188,18 +184,18 @@ func (px *Paxos) ProposerAccept(N int, seq int, vp interface{}) bool {
 		if ok && reply.Err == "" {
 			//log.Printf("me is %v. peer %v accept_ok", px.me, peer)
 			count += 1
+			if count >= (len(px.peers) + 1)/ 2 {
+				return true
+			}
 		}
 	}
-
-	if count < (len(px.peers) + 1)/ 2 {
-		return false
-	}
-	return true
+	return false
 }
 
-func (px *Paxos) ProposerDecided(seq int, vp interface{}) {
+func (px *Paxos) ProposerDecided(N int, seq int, vp interface{}) {
 	for i, peer := range px.peers {
-		args :=	&DecidedArgs{seq,vp}
+		var doneValue, _ = px.doneValues.Load(px.me)
+		args :=	&DecidedArgs{seq,N, vp, doneValue.(int), px.me}
 		var reply DecidedReply
 		var ok = false
 		if i == px.me {
@@ -219,7 +215,6 @@ func (px *Paxos) ProposerDecided(seq int, vp interface{}) {
 func (px *Paxos) AcceptorPrepare(args *PrepareArgs, reply *PrepareReply) error {
 
 	reply.N = args.N
-	px.Share(args.Z_i, args.Proposer)
 	ins, _ := px.instances.LoadOrStore(args.Seq, &Instance{fate: Pending, n_p: -1, n_a: -1, v_a: nil})
 	inst := ins.(*Instance)
 	if args.N > inst.n_p {
@@ -236,10 +231,7 @@ func (px *Paxos) AcceptorPrepare(args *PrepareArgs, reply *PrepareReply) error {
 func (px *Paxos) AcceptorAccept(args *AcceptArgs, reply *AcceptReply) error {
 
 	reply.N = args.N
-	ins, _ := px.instances.Load(args.Seq)
-	if ins == nil {
-		return errors.New("AcceptorAccept: instance should not be nil if it was promised")
-	}
+	ins, _ := px.instances.LoadOrStore(args.Seq, &Instance{fate: Pending, n_p: -1, n_a: -1, v_a: nil})
 	inst := ins.(*Instance)
 	if args.N >= inst.n_p {
 		px.instances.Store(args.Seq, &Instance{fate: Pending, n_p: args.N, n_a: args.N, v_a: args.V_p})
@@ -254,12 +246,8 @@ func (px *Paxos) AcceptorAccept(args *AcceptArgs, reply *AcceptReply) error {
 func (px *Paxos) AcceptorDecided(args *DecidedArgs, reply *DecidedReply) error {
 
 	//log.Printf("peer %v decided new seq: %v, value: %v", px.me, args.Seq, args.V_p)
-	ins, _ := px.instances.Load(args.Seq)
-	if ins == nil {
-		return errors.New("AcceptorDecided: instance should not be nil if it was promised")
-	}
-	inst := ins.(*Instance)
-	px.instances.Store(args.Seq, &Instance{Decided, inst.n_p, inst.n_a, inst.v_a})
+	px.Share(args.Z_i, args.Proposer)
+	px.instances.Store(args.Seq, &Instance{Decided, args.N, args.N, args.V_p})
 	return nil
 }
 
