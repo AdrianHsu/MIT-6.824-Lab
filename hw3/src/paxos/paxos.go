@@ -142,9 +142,9 @@ func (px *Paxos) ProposerPropose(seq int, v interface{}) {
 			// did not satisfy the majority. re-do the prepare phase
 			// case 1. network unreachable -> e.g., 2 out of 5 are replied. but in vein.
 			// case 2. those peers have already accepted a higher N_p from other proposers.
-			N = highest_n + 1
 			// If it were case 2 -> find out who is the proposer that has committed to those peers
 			id := px.CommittedToWhom(highest_n)
+			N = highest_n + 1
 
 			// Race condition prevent liveness
 			// Solution: back off period chosen based on ordering
@@ -156,6 +156,7 @@ func (px *Paxos) ProposerPropose(seq int, v interface{}) {
 				waitTime := 100 * (id + 3)
 				time.Sleep(time.Millisecond * time.Duration(waitTime))
 			}
+
 			// re-do the prepare phase
 			continue
 		}
@@ -166,7 +167,8 @@ func (px *Paxos) ProposerPropose(seq int, v interface{}) {
 		// in the prepare phase. Now we can do the memory freeing.
 		px.Forget(px.Min())
 
-		log.Printf("proposer is %v. reach majority for [prepare]. seq is %v, N is %v", px.me, seq, N)
+		//log.Printf("proposer is %v. reach majority for [prepare]. seq is %v, N is %v, h_n is %v, " +
+		//	"v is %v", px.me, seq, N, highest_n, v)
 
 		// ======== Accept Phase ========
 
@@ -175,7 +177,7 @@ func (px *Paxos) ProposerPropose(seq int, v interface{}) {
 			time.Sleep(time.Millisecond * 100)
 			continue
 		}
-		log.Printf("proposer is %v. reach majority for [accept]. seq is %v, N is %v", px.me, seq, N,)
+		//log.Printf("proposer is %v. reach majority for [accept]. seq is %v, N is %v, v is %v", px.me, seq, N, v)
 
 		// ======== Decided Phase ========
 
@@ -186,7 +188,7 @@ func (px *Paxos) ProposerPropose(seq int, v interface{}) {
 			tryTimes += 1
 			time.Sleep(time.Millisecond * 100)
 		}
-		log.Printf("proposer is %v. reach majority for [decided]. seq is %v, N is %v", px.me, seq, N)
+		//log.Printf("proposer is %v. reach majority for [decided]. seq is %v, N is %v, v is %v", px.me, seq, N, v)
 		decided = true
 	}
 }
@@ -244,7 +246,7 @@ func (px *Paxos) ProposerPrepare(N int, seq int, v interface{}) (bool, interface
 	if count < (len(px.peers) + 1)/ 2 {
 		return false, 0, highest_n
 	}
-	return true, v_prime, 0
+	return true, v_prime, highest_n
 }
 
 // added by Adrian
@@ -324,6 +326,7 @@ func (px *Paxos) AcceptorPrepare(args *PrepareArgs, reply *PrepareReply) error {
 	if args.N > inst.n_p {
 		// for storing this instance, we should NOT put the previous fate into it. just put a `Pending`
 		// why? because we still want to perform the whole paxos process normally
+
 		px.instances.Store(args.Seq, &Instance{fate: Pending, n_p: args.N, n_a: inst.n_a, v_a: inst.v_a})
 		var doneValue, _ = px.doneValues.Load(px.me)
 		reply.Z_i = doneValue.(int) // to restore the Done() value
@@ -337,13 +340,14 @@ func (px *Paxos) AcceptorPrepare(args *PrepareArgs, reply *PrepareReply) error {
 		reply.Higher_N = inst.n_p
 		reply.Err = "1"
 	}
+	//log.Printf("acceptor prepare: me is %v, seq is %v, n is %v, n_p is %v, v is %v", px.me, args.Seq,
+	//	args.N, inst.n_p, inst.v_a)
 	return nil
 }
 
 // added by Adrian
 // acceptor's accept(n, v) handler
 func (px *Paxos) AcceptorAccept(args *AcceptArgs, reply *AcceptReply) error {
-
 	reply.N = args.N
 	// it is possible that the acceptor hasn't performed the AcceptorPrepare
 	// and yet directly jumps into the AcceptorAccept() function
@@ -361,10 +365,12 @@ func (px *Paxos) AcceptorAccept(args *AcceptArgs, reply *AcceptReply) error {
 
 	if args.N >= inst.n_p {
 		// give it `Decided` here instead of making it Pending
-		px.instances.Store(args.Seq, &Instance{fate: Decided, n_p: args.N, n_a: args.N, v_a: args.V_p})
+		px.instances.Store(args.Seq, &Instance{fate: Pending, n_p: args.N, n_a: args.N, v_a: args.V_p})
 	} else {
 		reply.Err = "2"
 	}
+	//log.Printf("acceptor accept: me is %v, seq is %v, n is %v, n_p is %v, v is %v", px.me, args.Seq,
+	//	args.N, inst.n_p, inst.v_a)
 	return nil
 }
 
