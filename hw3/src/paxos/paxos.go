@@ -323,7 +323,8 @@ func (px *Paxos) AcceptorPrepare(args *PrepareArgs, reply *PrepareReply) error {
 
 	if args.N > inst.n_p {
 		// for storing this instance, we should put the previous fate into it. not just a `Pending`
-		px.instances.Store(args.Seq, &Instance{fate: inst.fate, n_p: args.N, n_a: inst.n_a, v_a: inst.v_a})
+		// it is weird...
+		px.instances.Store(args.Seq, &Instance{fate: Pending, n_p: args.N, n_a: inst.n_a, v_a: inst.v_a})
 		var doneValue, _ = px.doneValues.Load(px.me)
 		reply.Z_i = doneValue.(int) // to restore the Done() value
 		reply.N_a = inst.n_a
