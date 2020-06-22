@@ -153,7 +153,7 @@ func (px *Paxos) ProposerPropose(seq int, v interface{}) {
 			// else we re-do the prepare phase immediately
 			if id > px.me {
 				// the wait time depends on the order of each peer
-				waitTime := 100 * (id + 3)
+				waitTime := 300 * ( px.me + 1 )
 				time.Sleep(time.Millisecond * time.Duration(waitTime))
 			}
 
