@@ -322,8 +322,8 @@ func (px *Paxos) AcceptorPrepare(args *PrepareArgs, reply *PrepareReply) error {
 	inst := ins.(*Instance)
 
 	if args.N > inst.n_p {
-		// for storing this instance, we should put the previous fate into it. not just a `Pending`
-		// it is weird...
+		// for storing this instance, we should NOT put the previous fate into it. just put a `Pending`
+		// why? because we still want to perform the whole paxos process normally
 		px.instances.Store(args.Seq, &Instance{fate: Pending, n_p: args.N, n_a: inst.n_a, v_a: inst.v_a})
 		var doneValue, _ = px.doneValues.Load(px.me)
 		reply.Z_i = doneValue.(int) // to restore the Done() value
@@ -331,6 +331,9 @@ func (px *Paxos) AcceptorPrepare(args *PrepareArgs, reply *PrepareReply) error {
 		reply.V_a = inst.v_a
 		//reply.Higher_N = args.N // give it a default value
 	} else {
+		// a proposer needs a way to choose a higher proposal number than any seen so far.
+		// It may also be useful for the propose RPC handler to return the highest known proposal number
+		// if it rejects an RPC, to help the caller pick a higher one next time.
 		reply.Higher_N = inst.n_p
 		reply.Err = "1"
 	}
