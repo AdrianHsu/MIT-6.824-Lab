@@ -611,7 +611,9 @@ func TestMany(t *testing.T) {
 	for {
 		done := true
 		for seq := 1; seq < ninst; seq++ {
-			if ndecided(t, pxa, seq) < npaxos {
+			num := ndecided(t, pxa, seq)
+			//log.Printf("%v", num)
+			if num < npaxos {
 				done = false
 			}
 		}
@@ -700,7 +702,9 @@ func TestManyUnreliable(t *testing.T) {
 	for {
 		done := true
 		for seq := 1; seq < ninst; seq++ {
-			if ndecided(t, pxa, seq) < npaxos {
+			num := ndecided(t, pxa, seq)
+			if num < npaxos {
+				//log.Printf("%v, %v", seq, num)
 				done = false
 			}
 		}

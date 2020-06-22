@@ -124,8 +124,10 @@ func (px *Paxos) ProposerPropose(seq int, v interface{}) {
 	var decided = false
 	var N = 1 << uint(px.me + 20)
 	now := time.Now()
+
 	for !decided {
-		if px.isdead() || time.Now().Sub(now).Seconds() > time.Duration(30 * time.Second).Seconds() {
+		//log.Printf("%v, %v, %v", px.me, seq, N)
+		if px.isdead() || time.Now().Sub(now).Seconds() > time.Duration(30*time.Second).Seconds() {
 			//log.Printf("isdead, killed: %v", px.peers[px.me])
 			px.Kill()
 			return
@@ -158,7 +160,12 @@ func (px *Paxos) ProposerPropose(seq int, v interface{}) {
 			continue
 		}
 		//log.Printf("proposer is %v. reach majority for [accept]. seq is %v, N is %v", px.me, seq, N,)
-		px.ProposerDecided(N, seq, vp)
+		tryTimes := 0
+		for px.ProposerDecided(N, seq, vp) == false && tryTimes < 10 {
+			tryTimes += 1
+			time.Sleep(time.Millisecond * 100)
+		}
+		//px.ProposerDecided(N, seq, vp)
 		//log.Printf("proposer is %v. reach majority for [decided]. seq is %v, N is %v", px.me, seq, N)
 		decided = true
 	}
@@ -248,7 +255,7 @@ func (px *Paxos) ProposerDecided(N int, seq int, vp interface{}) bool {
 			// even if all reachable peers call Done.
 		}
 	}
-	if count < (len(px.peers) + 1)/ 2 {
+	if count < len(px.peers) {
 		return false
 	}
 	return true
@@ -261,6 +268,7 @@ func (px *Paxos) AcceptorPrepare(args *PrepareArgs, reply *PrepareReply) error {
 	reply.N = args.N
 	ins, _ := px.instances.LoadOrStore(args.Seq, &Instance{fate: Pending, n_p: -1, n_a: -1, v_a: nil})
 	inst := ins.(*Instance)
+
 	if args.N > inst.n_p {
 		px.instances.Store(args.Seq, &Instance{fate: Pending, n_p: args.N, n_a: inst.n_a, v_a: inst.v_a})
 		var doneValue, _ = px.doneValues.Load(px.me)
