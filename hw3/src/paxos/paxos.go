@@ -211,40 +211,52 @@ func (px *Paxos) ProposerPrepare(N int, seq int, v interface{}) (bool, interface
 	var max_n_a = -1
 	var v_prime = v
 	var highest_n = N
+	var wg sync.WaitGroup
 	for i, peer := range px.peers {
 
-		args := &PrepareArgs{seq, N}
-		var reply PrepareReply
-		var ok = false
-		if i == px.me {
-			// Hint: in order to pass tests assuming unreliable network,
-			// your paxos should call the local acceptor through a function call rather than RPC.
-			px.AcceptorPrepare(args, &reply)
-			ok = true
-		} else {
-			ok = call(peer, "Paxos.AcceptorPrepare", args, &reply)
-		}
+		wg.Add(1)
+		go func(wg *sync.WaitGroup, i int, peer string, N int, seq int,
+			v interface{}, count *int, max_n_a *int, v_prime *interface{}, highest_n *int) {
+			defer wg.Done()
+			args := &PrepareArgs{seq, N}
+			var reply PrepareReply
+			var ok = false
+			if i == px.me {
+				// Hint: in order to pass tests assuming unreliable network,
+				// your paxos should call the local acceptor through a function call rather than RPC.
+				px.AcceptorPrepare(args, &reply)
+				ok = true
+			} else {
+				ok = call(peer, "Paxos.AcceptorPrepare", args, &reply)
+			}
 
-		if ok && reply.Err == "" {
-			//log.Printf("me is %v. peer %v prepare_ok: N is %v", px.me, peer, reply.N)
-			count += 1
-			// with an aim to find out the highest n_a and its v_a
-			if reply.N_a > max_n_a {
-				max_n_a = reply.N_a
-				v_prime = reply.V_a
+			if ok && reply.Err == "" {
+				//log.Printf("me is %v. peer %v prepare_ok: N is %v", px.me, peer, reply.N)
+				px.mu.Lock()
+				*count += 1
+				// with an aim to find out the highest n_a and its v_a
+				if reply.N_a > *max_n_a {
+					*max_n_a = reply.N_a
+					*v_prime = reply.V_a
+				}
+				// piggyback: update the latest Done value of Peer i for my local `doneValues`
+				px.Update(reply.Z_i, i)
+				px.mu.Unlock()
+			} else {
+				// log.Printf("prepare failed. me: %v, peer: %v", px.me, peer)
+				// case 1: network failure (reply.Err should be nothing)
+				// case 2: the acceptor has already accepted someone else's proposal (prepare_reject)
+				// if it were case 2, we update the highest N that we've seen now.
+				px.mu.Lock()
+				if reply.Higher_N > *highest_n {
+					*highest_n = reply.Higher_N
+				}
+				px.mu.Unlock()
 			}
-			// piggyback: update the latest Done value of Peer i for my local `doneValues`
-			px.Update(reply.Z_i, i)
-		} else {
-			// log.Printf("prepare failed. me: %v, peer: %v", px.me, peer)
-			// case 1: network failure (reply.Err should be nothing)
-			// case 2: the acceptor has already accepted someone else's proposal (prepare_reject)
-			// if it were case 2, we update the highest N that we've seen now.
-			if reply.Higher_N > highest_n {
-				highest_n = reply.Higher_N
-			}
-		}
+
+		}(&wg, i, peer, N, seq, v, &count, &max_n_a, &v_prime, &highest_n)
 	}
+	wg.Wait()
 	// no majority is satisfied
 	if count < (len(px.peers) + 1)/ 2 {
 		return false, 0, highest_n
@@ -256,30 +268,40 @@ func (px *Paxos) ProposerPrepare(N int, seq int, v interface{}) (bool, interface
 func (px *Paxos) ProposerAccept(N int, seq int, vp interface{}) bool {
 	// pretty similar to ProposerPrepare()
 	var count = 0
-	for i, peer := range px.peers {
-		args :=	&AcceptArgs{seq, N, vp}
-		var reply AcceptReply
-		var ok = false
-		if i == px.me {
-			px.AcceptorAccept(args, &reply)
-			ok = true
-		} else {
-			ok = call(peer, "Paxos.AcceptorAccept", args, &reply)
-		}
-		if ok && reply.Err == "" {
-			//log.Printf("me is %v. peer %v accept_ok", px.me, peer)
-			count += 1
-		} else {
-			// case 1. network unreachable
-			// case 2. while we are doing our accepting, someone perform prepare() with
-			// a higher n_p and thus we got an accept_reject
 
-			// e.g.,
-			// Acceptor 1: P1    A1-X
-			// Acceptor 2: P1 P2 A1-X (this `A1-X` failed as it has already accepted a higher n_p from P2)
-			// Acceptor 3:    P2
-		}
+	var wg sync.WaitGroup
+	for i, peer := range px.peers {
+		wg.Add(1)
+
+		go func(wg *sync.WaitGroup, i int, peer string, N int, seq int, vp interface{}, count *int) {
+			defer wg.Done()
+			args := &AcceptArgs{seq, N, vp}
+			var reply AcceptReply
+			var ok = false
+			if i == px.me {
+				px.AcceptorAccept(args, &reply)
+				ok = true
+			} else {
+				ok = call(peer, "Paxos.AcceptorAccept", args, &reply)
+			}
+			if ok && reply.Err == "" {
+				//log.Printf("me is %v. peer %v accept_ok", px.me, peer)
+				px.mu.Lock()
+				*count += 1
+				px.mu.Unlock()
+			} else {
+				// case 1. network unreachable
+				// case 2. while we are doing our accepting, someone perform prepare() with
+				// a higher n_p and thus we got an accept_reject
+
+				// e.g.,
+				// Acceptor 1: P1    A1-X
+				// Acceptor 2: P1 P2 A1-X (this `A1-X` failed as it has already accepted a higher n_p from P2)
+				// Acceptor 3:    P2
+			}
+		}(&wg, i, peer, N, seq, vp, &count)
 	}
+	wg.Wait()
 	if count < (len(px.peers) + 1)/ 2 {
 		return false // no majority
 	}
@@ -289,23 +311,31 @@ func (px *Paxos) ProposerAccept(N int, seq int, vp interface{}) bool {
 // added by Adrian
 func (px *Paxos) ProposerDecided(N int, seq int, vp interface{}) bool {
 	var count = 0
+	var wg sync.WaitGroup
 	for i, peer := range px.peers {
-		args :=	&DecidedArgs{seq,N, vp}
-		var reply DecidedReply
-		var ok = false
-		if i == px.me {
-			px.AcceptorDecided(args, &reply)
-			ok = true
-		} else {
-			ok = call(peer, "Paxos.AcceptorDecided", args, &reply)
-		}
-		if ok {
-			//log.Printf("me is %v. peer %v decided_ok", px.me, peer)
-			count += 1
-		} else {
-			// network unreachable
-		}
+		wg.Add(1)
+		go func(wg *sync.WaitGroup, i int, peer string, N int, seq int, vp interface{}, count *int) {
+			defer wg.Done()
+			args := &DecidedArgs{seq, N, vp}
+			var reply DecidedReply
+			var ok = false
+			if i == px.me {
+				px.AcceptorDecided(args, &reply)
+				ok = true
+			} else {
+				ok = call(peer, "Paxos.AcceptorDecided", args, &reply)
+			}
+			if ok {
+				//log.Printf("me is %v. peer %v decided_ok", px.me, peer)
+				px.mu.Lock()
+				*count += 1
+				px.mu.Unlock()
+			} else {
+				// network unreachable
+			}
+		}(&wg, i, peer, N, seq, vp, &count)
 	}
+	wg.Wait()
 	// taken from lecture #9 slides. (potential approach)
 	// proposer who has proposal accepted by majority of acceptors informs all learners
 	if count < len(px.peers) {

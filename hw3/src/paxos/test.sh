@@ -2,7 +2,7 @@
 
 rm out.txt
 
-for i in {1..3}
+for i in {1..60}
 
 do 
   echo "round: $i" | tee -a ./out.txt
