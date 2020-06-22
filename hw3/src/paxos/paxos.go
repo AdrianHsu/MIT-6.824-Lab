@@ -112,64 +112,93 @@ func call(srv string, name string, args interface{}, reply interface{}) bool {
 	return false
 }
 
-func (px *Paxos) CommittedToWhom(N int) int {
-	var N0 = uint(N) >> 20
-	return int(math.Log2(float64(N0)))
-}
+
+///// PROPOSER PART //////
 
 // added by Adrian
-// proposer(v)
+// main proposer function. The proposer has only 1 function.
 func (px *Paxos) ProposerPropose(seq int, v interface{}) {
 
 	var decided = false
+	// Hint: The px.me value will be different in each Paxos peer,
+	// so you can use px.me to help ensure that proposal numbers are unique.
 	var N = 1 << uint(px.me + 20)
 	now := time.Now()
-
 	for !decided {
-		//log.Printf("%v, %v, %v", px.me, seq, N)
+		// You should call px.isdead() in any loops you have that might run
+		// for a while, and break out of the loop if px.isdead() is true.
 		if px.isdead() || time.Now().Sub(now).Seconds() > time.Duration(30*time.Second).Seconds() {
 			//log.Printf("isdead, killed: %v", px.peers[px.me])
 			px.Kill()
 			return
 		}
-		var vp = v // this v doesn't matter though
+		var vp = v // initialization. this v doesn't matter though
 		var reachMajority = false
 		var highest_n = N
-		vp = v
+
+		// ======== Prepare Phase ========
 		reachMajority, vp, highest_n = px.ProposerPrepare(N, seq, v)
 		if !reachMajority {
+			// did not satisfy the majority. re-do the prepare phase
+			// case 1. network unreachable -> e.g., 2 out of 5 are replied. but in vein.
+			// case 2. those peers have already accepted a higher N_p from other proposers.
 			N = highest_n + 1
+			// If it were case 2 -> find out who is the proposer that has committed to those peers
 			id := px.CommittedToWhom(highest_n)
-			// log.Printf("id: %v", id)
+
 			// Race condition prevent liveness
 			// Solution: back off period chosen based on ordering
 			// if the current committed proposer's id is larger than mine
 			// -> "alright, I will back off and wait for it!"
+			// else we re-do the prepare phase immediately
 			if id > px.me {
+				// the wait time depends on the order of each peer
 				waitTime := 100 * (id + 3)
 				time.Sleep(time.Millisecond * time.Duration(waitTime))
 			}
+			// re-do the prepare phase
 			continue
 		}
-
+		// It's OK for your Paxos to piggyback the Done value in the agreement protocol packets;
+		// that is, it's OK for peer P1 to only learn P2's latest Done value the next time
+		// that P2 sends an agreement message to P1
+		// Therefore, my design was that P2 (proposer) will learn P1 (all other acceptors) latest Done value
+		// in the prepare phase. Now we can do the memory freeing.
 		px.Forget(px.Min())
-		//log.Printf("proposer is %v. reach majority for [prepare]. seq is %v, N is %v", px.me, seq, N)
+
+		log.Printf("proposer is %v. reach majority for [prepare]. seq is %v, N is %v", px.me, seq, N)
+
+		// ======== Accept Phase ========
 
 		if px.ProposerAccept(N, seq, vp) == false {
+			// if we failed the accept phase -> re-start from the prepare phase
 			time.Sleep(time.Millisecond * 100)
 			continue
 		}
-		//log.Printf("proposer is %v. reach majority for [accept]. seq is %v, N is %v", px.me, seq, N,)
+		log.Printf("proposer is %v. reach majority for [accept]. seq is %v, N is %v", px.me, seq, N,)
+
+		// ======== Decided Phase ========
+
+		// try `decided` for a few times. If not work then we give up. -> weird.
+		// bc that sometimes the decided will never be able to reach every body
 		tryTimes := 0
 		for px.ProposerDecided(N, seq, vp) == false && tryTimes < 10 {
 			tryTimes += 1
 			time.Sleep(time.Millisecond * 100)
 		}
-		//px.ProposerDecided(N, seq, vp)
-		//log.Printf("proposer is %v. reach majority for [decided]. seq is %v, N is %v", px.me, seq, N)
+		log.Printf("proposer is %v. reach majority for [decided]. seq is %v, N is %v", px.me, seq, N)
 		decided = true
 	}
 }
+
+// added by Adrian
+// now that in the prepare phase, this proposal didn't satisfy the majority.
+// we want to find out who is the precedent proposer.
+func (px *Paxos) CommittedToWhom(N int) int {
+	var N0 = uint(N) >> 20
+	return int(math.Log2(float64(N0)))
+}
+
 // added by Adrian
 func (px *Paxos) ProposerPrepare(N int, seq int, v interface{}) (bool, interface{}, int) {
 
@@ -183,6 +212,8 @@ func (px *Paxos) ProposerPrepare(N int, seq int, v interface{}) (bool, interface
 		var reply PrepareReply
 		var ok = false
 		if i == px.me {
+			// Hint: in order to pass tests assuming unreliable network,
+			// your paxos should call the local acceptor through a function call rather than RPC.
 			px.AcceptorPrepare(args, &reply)
 			ok = true
 		} else {
@@ -192,18 +223,24 @@ func (px *Paxos) ProposerPrepare(N int, seq int, v interface{}) (bool, interface
 		if ok && reply.Err == "" {
 			//log.Printf("me is %v. peer %v prepare_ok: N is %v", px.me, peer, reply.N)
 			count += 1
+			// with an aim to find out the highest n_a and its v_a
 			if reply.N_a > max_n_a {
 				max_n_a = reply.N_a
 				v_prime = reply.V_a
 			}
+			// piggyback: update the latest Done value of Peer i for my local `doneValues`
 			px.Update(reply.Z_i, i)
 		} else {
-			//log.Printf("prepare failed. me: %v, peer: %v", px.me, peer)
+			// log.Printf("prepare failed. me: %v, peer: %v", px.me, peer)
+			// case 1: network failure (reply.Err should be nothing)
+			// case 2: the acceptor has already accepted someone else's proposal (prepare_reject)
+			// if it were case 2, we update the highest N that we've seen now.
 			if reply.Higher_N > highest_n {
 				highest_n = reply.Higher_N
 			}
 		}
 	}
+	// no majority is satisfied
 	if count < (len(px.peers) + 1)/ 2 {
 		return false, 0, highest_n
 	}
@@ -212,6 +249,7 @@ func (px *Paxos) ProposerPrepare(N int, seq int, v interface{}) (bool, interface
 
 // added by Adrian
 func (px *Paxos) ProposerAccept(N int, seq int, vp interface{}) bool {
+	// pretty similar to ProposerPrepare()
 	var count = 0
 	for i, peer := range px.peers {
 		args :=	&AcceptArgs{seq, N, vp}
@@ -226,14 +264,24 @@ func (px *Paxos) ProposerAccept(N int, seq int, vp interface{}) bool {
 		if ok && reply.Err == "" {
 			//log.Printf("me is %v. peer %v accept_ok", px.me, peer)
 			count += 1
+		} else {
+			// case 1. network unreachable
+			// case 2. while we are doing our accepting, someone perform prepare() with
+			// a higher n_p and thus we got an accept_reject
+
+			// e.g.,
+			// Acceptor 1: P1    A1-X
+			// Acceptor 2: P1 P2 A1-X (this `A1-X` failed as it has already accepted a higher n_p from P2)
+			// Acceptor 3:    P2
 		}
 	}
 	if count < (len(px.peers) + 1)/ 2 {
-		return false
+		return false // no majority
 	}
 	return true
 }
 
+// added by Adrian
 func (px *Paxos) ProposerDecided(N int, seq int, vp interface{}) bool {
 	var count = 0
 	for i, peer := range px.peers {
@@ -250,32 +298,37 @@ func (px *Paxos) ProposerDecided(N int, seq int, vp interface{}) bool {
 			//log.Printf("me is %v. peer %v decided_ok", px.me, peer)
 			count += 1
 		} else {
-			// So if a peer is dead
-			// or unreachable, other peers Min()s will not increase
-			// even if all reachable peers call Done.
+			// network unreachable
 		}
 	}
+	// taken from lecture #9 slides. (potential approach)
+	// proposer who has proposal accepted by majority of acceptors informs all learners
 	if count < len(px.peers) {
 		return false
 	}
 	return true
 }
 
+///// ACCEPTOR PART //////
+
 // added by Adrian
 // acceptor's prepare(n) handler
 func (px *Paxos) AcceptorPrepare(args *PrepareArgs, reply *PrepareReply) error {
 
 	reply.N = args.N
+	// if the instance[seq] has been created -> we load it
+	// if not -> we create a new one
 	ins, _ := px.instances.LoadOrStore(args.Seq, &Instance{fate: Pending, n_p: -1, n_a: -1, v_a: nil})
 	inst := ins.(*Instance)
 
 	if args.N > inst.n_p {
-		px.instances.Store(args.Seq, &Instance{fate: Pending, n_p: args.N, n_a: inst.n_a, v_a: inst.v_a})
+		// for storing this instance, we should put the previous fate into it. not just a `Pending`
+		px.instances.Store(args.Seq, &Instance{fate: inst.fate, n_p: args.N, n_a: inst.n_a, v_a: inst.v_a})
 		var doneValue, _ = px.doneValues.Load(px.me)
-		reply.Higher_N = args.N
-		reply.Z_i = doneValue.(int)
+		reply.Z_i = doneValue.(int) // to restore the Done() value
 		reply.N_a = inst.n_a
 		reply.V_a = inst.v_a
+		//reply.Higher_N = args.N // give it a default value
 	} else {
 		reply.Higher_N = inst.n_p
 		reply.Err = "1"
@@ -284,12 +337,26 @@ func (px *Paxos) AcceptorPrepare(args *PrepareArgs, reply *PrepareReply) error {
 }
 
 // added by Adrian
+// acceptor's accept(n, v) handler
 func (px *Paxos) AcceptorAccept(args *AcceptArgs, reply *AcceptReply) error {
 
 	reply.N = args.N
+	// it is possible that the acceptor hasn't performed the AcceptorPrepare
+	// and yet directly jumps into the AcceptorAccept() function
+	// e.g.,
+	// Acceptor 1 (me):  x A1-X
+	// Acceptor 2     : P1 A1-X
+	// Acceptor 3     : P1 A1-X
+	// says, the acceptor was encountering network failure when proposer 1 got the majority for A2, A3
+	// and then later the Proposer 1 will for sure send accept() to all the peers including A1 (me)
+
+	// so what should we do? just give the instance slot a default value
 	ins, _ := px.instances.LoadOrStore(args.Seq, &Instance{fate: Pending, n_p: -1, n_a: -1, v_a: nil})
+
 	inst := ins.(*Instance)
+
 	if args.N >= inst.n_p {
+		// give it `Decided` here instead of making it Pending
 		px.instances.Store(args.Seq, &Instance{fate: Decided, n_p: args.N, n_a: args.N, v_a: args.V_p})
 	} else {
 		reply.Err = "2"
@@ -298,8 +365,11 @@ func (px *Paxos) AcceptorAccept(args *AcceptArgs, reply *AcceptReply) error {
 }
 
 // added by Adrian
+// acceptor's decided(v) handler
 func (px *Paxos) AcceptorDecided(args *DecidedArgs, reply *DecidedReply) error {
 
+	// to make sure that some acceptors may just be cut off and not yet heard this.
+	// so we did exactly the same store() as `AcceptorAccept()` here for these learners to learn
 	//log.Printf("peer %v decided new seq: %v, value: %v", px.me, args.Seq, args.V_p)
 	px.instances.Store(args.Seq, &Instance{Decided, args.N, args.N, args.V_p})
 	return nil
@@ -316,6 +386,8 @@ func (px *Paxos) Start(seq int, v interface{}) {
 	// Your code here.
 
 	go func(seq int, v interface{}) {
+		// If Start() is called with a sequence number less than Min(),
+		// the Start() call should be ignored.
 		if seq < px.Min() {
 			return
 		}
@@ -325,6 +397,9 @@ func (px *Paxos) Start(seq int, v interface{}) {
 }
 
 // added by Adrian
+// helper function for Done()
+// update the doneValues for px.me's doneValues[peer i]
+// it will put the *largest* one as the done value
 func (px *Paxos) Update(z_i int, i int) {
 	old, _ := px.doneValues.Load(i)
 	if z_i > old.(int) {
@@ -340,11 +415,7 @@ func (px *Paxos) Update(z_i int, i int) {
 //
 func (px *Paxos) Done(seq int) {
 	// Your code here.
-
-	old, _ := px.doneValues.Load(px.me)
-	if seq > old.(int) {
-		px.doneValues.Store(px.me, seq)
-	}
+	px.Update(seq, px.me)
 }
 
 //
@@ -365,6 +436,7 @@ func (px *Paxos) Max() int {
 	return max
 }
 // added by Adrian
+// remove those instances whose seq is less than `min`
 func (px *Paxos) Forget(min int) error {
 	sli := []int{}
 	px.instances.Range(func(k, v interface{}) bool { // seq is the key
@@ -410,6 +482,9 @@ func (px *Paxos) Forget(min int) error {
 func (px *Paxos) Min() int {
 	// You code here.
 	var min = math.MaxInt32
+	// find out the smallest done value **locally**,
+	// i.e., we check those done values in my cache instead of
+	// asking everyone else
 	px.doneValues.Range(func(k, v interface{}) bool { // seq is the key
 		if v.(int) < min {
 			min = v.(int)
@@ -429,6 +504,9 @@ func (px *Paxos) Min() int {
 //
 func (px *Paxos) Status(seq int) (Fate, interface{}) {
 	// Your code here.
+
+	// If Status() is called with a sequence number less than Min(),
+	// Status() should return Forgotten.
 	if seq < px.Min() {
 		return Forgotten, 0
 	}
