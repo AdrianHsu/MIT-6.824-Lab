@@ -44,12 +44,6 @@ type Instance struct { // key: n_a, value: v_a
 	v_a         interface{}
 }
 
-type AcceptedProposal struct {
-	n            int
-	n_a          int
-	v_a          interface{}
-}
-
 // px.Status() return values, indicating
 // whether an agreement has been decided,
 // or Paxos has not yet reached agreement,
