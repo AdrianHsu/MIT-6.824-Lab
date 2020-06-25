@@ -61,17 +61,17 @@ func (kv *KVPaxos) SyncUp(xop Op) {
 				kv.doPutAppend(op.Operation, op.Key, op.Value)
 
 			} else {
-				value, _ := kv.doGet(op.Key)
-				DPrintf("get: %v", value)
+				//value, _ := kv.doGet(op.Key)
+				//DPrintf("get: %v", value)
 			}
 			kv.seq += 1
 		} else {
 			kv.px.Start(kv.seq, xop)
 		}
 		time.Sleep(to)
-		//if to < 10 * time.Second {
-		//	to *= 2
-		//}
+		if to < 10 * time.Second {
+			to *= 2
+		}
 	}
 	kv.seq += 1
 }
