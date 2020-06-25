@@ -69,11 +69,12 @@ func (kv *KVPaxos) SyncUp(xop Op) {
 			kv.seq += 1
 		} else {
 			kv.px.Start(kv.seq, xop)
+			time.Sleep(to)
+			if to < 10 * time.Second {
+				to *= 2
+			}
 		}
-		time.Sleep(to)
-		//if to < 10 * time.Second {
-		//	to *= 2
-		//}
+
 	}
 	kv.seq += 1
 }
