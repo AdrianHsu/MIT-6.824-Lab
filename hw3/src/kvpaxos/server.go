@@ -1,6 +1,9 @@
 package kvpaxos
 
-import "net"
+import (
+	"net"
+	"time"
+)
 import "fmt"
 import "net/rpc"
 import "log"
@@ -13,7 +16,7 @@ import "encoding/gob"
 import "math/rand"
 
 
-const Debug = 0
+const Debug = 1
 
 func DPrintf(format string, a ...interface{}) (n int, err error) {
 	if Debug > 0 {
@@ -27,6 +30,10 @@ type Op struct {
 	// Your definitions here.
 	// Field names must start with capital letters,
 	// otherwise RPC will break.
+	OpID      int64
+	Operation string
+	Key       string
+	Value     string
 }
 
 type KVPaxos struct {
@@ -38,17 +45,59 @@ type KVPaxos struct {
 	px         *paxos.Paxos
 
 	// Your definitions here.
+	database   sync.Map
+	seq        int
 }
 
+func (kv *KVPaxos) doGet(Key string) string {
+	val, ok := kv.database.Load(Key)
+	if !ok {
+		return ""
+	} else {
+		return val.(string)
+	}
+}
+
+func (kv *KVPaxos) doPutAppend(Operation string, Key string, Value string) {
+	val, ok := kv.database.LoadOrStore(Key, Value)
+	if !ok { // store
+		// init
+	} else { // load
+		if Operation == "Put" {
+			kv.database.Store(Key, Value)
+		} else if Operation == "Append" {
+			vals := val.(string)
+			kv.database.Store(Key, vals + Value)
+		}
+	}
+}
 
 func (kv *KVPaxos) Get(args *GetArgs, reply *GetReply) error {
 	// Your code here.
+	//op := Op{args.Hash, "Get", args.Key, ""}
+	reply.Value = kv.doGet(args.Key)
 	return nil
 }
 
 func (kv *KVPaxos) PutAppend(args *PutAppendArgs, reply *PutAppendReply) error {
 	// Your code here.
+	op := Op{args.Hash, args.Op, args.Key, args.Value}
+	kv.px.Start(kv.seq, op)
 
+	to := 10 * time.Millisecond
+	for {
+		status, _ := kv.px.Status(kv.seq)
+		if status == paxos.Decided {
+			kv.seq += 1
+			break
+		}
+		time.Sleep(to)
+		if to < 10 * time.Second {
+			to *= 2
+		}
+	}
+
+	kv.doPutAppend(args.Op, args.Key, args.Value)
 	return nil
 }
 
@@ -94,6 +143,7 @@ func StartServer(servers []string, me int) *KVPaxos {
 	kv.me = me
 
 	// Your initialization code here.
+	kv.seq = 0
 
 	rpcs := rpc.NewServer()
 	rpcs.Register(kv)
