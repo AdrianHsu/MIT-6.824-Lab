@@ -49,12 +49,39 @@ type KVPaxos struct {
 	seq        int
 }
 
-func (kv *KVPaxos) doGet(Key string) string {
+func (kv *KVPaxos) SyncUp(xop Op) {
+	to := 10 * time.Millisecond
+	for {
+		status, op := kv.px.Status(kv.seq)
+		if status == paxos.Decided {
+			op := op.(Op)
+			if xop.OpID == op.OpID {
+				break
+			} else if op.Operation == "Put" || op.Operation == "Append" {
+				kv.doPutAppend(op.Operation, op.Key, op.Value)
+
+			} else {
+				value, _ := kv.doGet(op.Key)
+				DPrintf("get: %v", value)
+			}
+			kv.seq += 1
+		} else {
+			kv.px.Start(kv.seq, xop)
+		}
+		time.Sleep(to)
+		//if to < 10 * time.Second {
+		//	to *= 2
+		//}
+	}
+	kv.seq += 1
+}
+
+func (kv *KVPaxos) doGet(Key string) (string, bool) {
 	val, ok := kv.database.Load(Key)
 	if !ok {
-		return ""
+		return "", false
 	} else {
-		return val.(string)
+		return val.(string), true
 	}
 }
 
@@ -74,29 +101,17 @@ func (kv *KVPaxos) doPutAppend(Operation string, Key string, Value string) {
 
 func (kv *KVPaxos) Get(args *GetArgs, reply *GetReply) error {
 	// Your code here.
-	//op := Op{args.Hash, "Get", args.Key, ""}
-	reply.Value = kv.doGet(args.Key)
+	op := Op{args.Hash, "Get", args.Key, ""}
+	kv.SyncUp(op)
+	reply.Value, _ = kv.doGet(args.Key)
 	return nil
 }
 
 func (kv *KVPaxos) PutAppend(args *PutAppendArgs, reply *PutAppendReply) error {
 	// Your code here.
 	op := Op{args.Hash, args.Op, args.Key, args.Value}
-	kv.px.Start(kv.seq, op)
 
-	to := 10 * time.Millisecond
-	for {
-		status, _ := kv.px.Status(kv.seq)
-		if status == paxos.Decided {
-			kv.seq += 1
-			break
-		}
-		time.Sleep(to)
-		if to < 10 * time.Second {
-			to *= 2
-		}
-	}
-
+	kv.SyncUp(op)
 	kv.doPutAppend(args.Op, args.Key, args.Value)
 	return nil
 }
