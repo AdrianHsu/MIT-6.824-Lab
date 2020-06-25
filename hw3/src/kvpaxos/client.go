@@ -76,7 +76,7 @@ func (ck *Clerk) Get(key string) string {
 	var i = 0
 	for !ok {
 		ok = call(ck.servers[i], "KVPaxos.Get", args, reply)
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(10 * time.Millisecond)
 		i += 1
 		i %= len(ck.servers)
 	}
@@ -94,7 +94,7 @@ func (ck *Clerk) PutAppend(key string, value string, op string) {
 	var i = 0
 	for !ok {
 		ok = call(ck.servers[i], "KVPaxos.PutAppend", args, reply)
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(10 * time.Millisecond)
 		i += 1
 		i %= len(ck.servers)
 	}

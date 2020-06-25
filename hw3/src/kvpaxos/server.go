@@ -53,6 +53,8 @@ func (kv *KVPaxos) SyncUp(xop Op) {
 	to := 10 * time.Millisecond
 	for {
 		status, op := kv.px.Status(kv.seq)
+		DPrintf("server %v, seq %v, status %v", kv.me, kv.seq, status)
+
 		if status == paxos.Decided {
 			op := op.(Op)
 			if xop.OpID == op.OpID {
@@ -69,9 +71,9 @@ func (kv *KVPaxos) SyncUp(xop Op) {
 			kv.px.Start(kv.seq, xop)
 		}
 		time.Sleep(to)
-		if to < 10 * time.Second {
-			to *= 2
-		}
+		//if to < 10 * time.Second {
+		//	to *= 2
+		//}
 	}
 	kv.seq += 1
 }
@@ -101,6 +103,8 @@ func (kv *KVPaxos) doPutAppend(Operation string, Key string, Value string) {
 
 func (kv *KVPaxos) Get(args *GetArgs, reply *GetReply) error {
 	// Your code here.
+	kv.mu.Lock()
+	defer kv.mu.Unlock()
 	op := Op{args.Hash, "Get", args.Key, ""}
 	kv.SyncUp(op)
 	reply.Value, _ = kv.doGet(args.Key)
@@ -109,8 +113,9 @@ func (kv *KVPaxos) Get(args *GetArgs, reply *GetReply) error {
 
 func (kv *KVPaxos) PutAppend(args *PutAppendArgs, reply *PutAppendReply) error {
 	// Your code here.
+	kv.mu.Lock()
+	defer kv.mu.Unlock()
 	op := Op{args.Hash, args.Op, args.Key, args.Value}
-
 	kv.SyncUp(op)
 	kv.doPutAppend(args.Op, args.Key, args.Value)
 	return nil
