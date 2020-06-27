@@ -21,7 +21,6 @@ type PutAppendArgs struct {
 
 type PutAppendReply struct {
 	Err Err
-	FailSrv int
 }
 
 type GetArgs struct {
@@ -33,5 +32,4 @@ type GetArgs struct {
 type GetReply struct {
 	Err   Err
 	Value string
-	FailSrv int
 }
