@@ -152,7 +152,7 @@ func (px *Paxos) ProposerPropose(seq int, v interface{}) {
 				// px.me is srv 0: wait for 2 second
 				// px.me is srv 1: wait for 3 second
 				// px.me is srv 4: wait for 5 second
-				waitTime := 100 * ( px.me + 2 )
+				waitTime := 500 * ( px.me + 2 )
 				time.Sleep(time.Millisecond * time.Duration(waitTime))
 			}
 
@@ -182,11 +182,11 @@ func (px *Paxos) ProposerPropose(seq int, v interface{}) {
 
 		// try `decided` for a few times. If not work then we give up. -> weird.
 		// bc that sometimes the decided will never be able to reach every body
-		//tryTimes := 0
-		//for px.ProposerDecided(N, seq, vp) == false && tryTimes < 10 {
-		//	tryTimes += 1
-		//	time.Sleep(time.Millisecond * 100)
-		//}
+		tryTimes := 0
+		for px.ProposerDecided(N, seq, vp) == false && tryTimes < 10 {
+			tryTimes += 1
+			time.Sleep(time.Millisecond * 100)
+		}
 		px.ProposerDecided(N, seq, vp)
 		//log.Printf("proposer is %v. reach majority for [decided]. seq is %v, N is %v, vp is %v", px.me, seq, N, vp)
 		decided = true
