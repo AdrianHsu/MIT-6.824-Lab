@@ -46,6 +46,8 @@ type KVPaxos struct {
 
 	// Your definitions here.
 	database   sync.Map
+	// hashVals acts as the state to filter duplicates
+	hashVals   sync.Map
 	seq        int
 }
 
@@ -62,7 +64,7 @@ func (kv *KVPaxos) SyncUp(xop Op) bool {
 			if xop.OpID == op.OpID {
 				break
 			} else if op.Operation == "Put" || op.Operation == "Append" {
-				kv.doPutAppend(op.Operation, op.Key, op.Value)
+				kv.doPutAppend(op.Operation, op.Key, op.Value, op.OpID)
 
 			} else {
 				//value, _ := kv.doGet(op.Key)
@@ -98,16 +100,21 @@ func (kv *KVPaxos) doGet(Key string) (string, bool) {
 	}
 }
 
-func (kv *KVPaxos) doPutAppend(Operation string, Key string, Value string) {
-	val, ok := kv.database.LoadOrStore(Key, Value)
-	if !ok { // store
-		// init
+func (kv *KVPaxos) doPutAppend(Operation string, Key string, Value string, hash int64) {
+	val, ok := kv.database.Load(Key)
+	if !ok { // not exists
+		// init. both are the same for either put / append
+		kv.database.Store(Key, Value)
 	} else { // load
 		if Operation == "Put" {
 			kv.database.Store(Key, Value)
 		} else if Operation == "Append" {
 			vals := val.(string)
-			kv.database.Store(Key, vals + Value)
+			_, ok := kv.hashVals.Load(hash)
+			if !ok {
+				kv.database.Store(Key, vals+Value)
+				kv.hashVals.Store(hash, 1) // an arbitrary value
+			}
 		}
 	}
 }
@@ -136,7 +143,7 @@ func (kv *KVPaxos) PutAppend(args *PutAppendArgs, reply *PutAppendReply) error {
 		reply.FailSrv = kv.me
 		return nil
 	}
-	kv.doPutAppend(args.Op, args.Key, args.Value)
+	kv.doPutAppend(args.Op, args.Key, args.Value, args.Hash)
 	return nil
 }
 
