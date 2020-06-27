@@ -119,6 +119,8 @@ func (px *Paxos) ProposerPropose(seq int, v interface{}) {
 	var N = 1 << uint(px.me + 20)
 	now := time.Now()
 	for !decided {
+		//log.Printf("propose! proposer is %v. seq is %v, N is %v, v is %v", px.me, seq, N, v)
+
 		// You should call px.isdead() in any loops you have that might run
 		// for a while, and break out of the loop if px.isdead() is true.
 		if px.isdead() || time.Now().Sub(now).Seconds() > time.Duration(30*time.Second).Seconds() {
@@ -150,7 +152,7 @@ func (px *Paxos) ProposerPropose(seq int, v interface{}) {
 				// px.me is srv 0: wait for 2 second
 				// px.me is srv 1: wait for 3 second
 				// px.me is srv 4: wait for 5 second
-				waitTime := 1000 * ( px.me + 2 )
+				waitTime := 100 * ( px.me + 2 )
 				time.Sleep(time.Millisecond * time.Duration(waitTime))
 			}
 
@@ -165,7 +167,7 @@ func (px *Paxos) ProposerPropose(seq int, v interface{}) {
 		px.Forget(px.Min())
 
 		//log.Printf("proposer is %v. reach majority for [prepare]. seq is %v, N is %v, h_n is %v, " +
-		//	"v is %v", px.me, seq, N, highest_n, v)
+		//	"vp is %v", px.me, seq, N, highest_n, vp)
 
 		// ======== Accept Phase ========
 
@@ -174,18 +176,19 @@ func (px *Paxos) ProposerPropose(seq int, v interface{}) {
 			time.Sleep(time.Millisecond * 100)
 			continue
 		}
-		//log.Printf("proposer is %v. reach majority for [accept]. seq is %v, N is %v, v is %v", px.me, seq, N, v)
+		//log.Printf("proposer is %v. reach majority for [accept]. seq is %v, N is %v, vp is %v", px.me, seq, N, vp)
 
 		// ======== Decided Phase ========
 
 		// try `decided` for a few times. If not work then we give up. -> weird.
 		// bc that sometimes the decided will never be able to reach every body
-		tryTimes := 0
-		for px.ProposerDecided(N, seq, vp) == false && tryTimes < 10 {
-			tryTimes += 1
-			time.Sleep(time.Millisecond * 100)
-		}
-		//log.Printf("proposer is %v. reach majority for [decided]. seq is %v, N is %v, v is %v", px.me, seq, N, v)
+		//tryTimes := 0
+		//for px.ProposerDecided(N, seq, vp) == false && tryTimes < 10 {
+		//	tryTimes += 1
+		//	time.Sleep(time.Millisecond * 100)
+		//}
+		px.ProposerDecided(N, seq, vp)
+		//log.Printf("proposer is %v. reach majority for [decided]. seq is %v, N is %v, vp is %v", px.me, seq, N, vp)
 		decided = true
 	}
 }
@@ -230,6 +233,7 @@ func (px *Paxos) ProposerPrepare(N int, seq int, v interface{}) (bool, interface
 				*count += 1
 				// with an aim to find out the highest n_a and its v_a
 				if reply.N_a > *max_n_a {
+					//log.Printf("change va: %v, %v, %v", px.me, reply.N_a, reply.V_a)
 					*max_n_a = reply.N_a
 					*v_prime = reply.V_a
 				}
@@ -250,7 +254,10 @@ func (px *Paxos) ProposerPrepare(N int, seq int, v interface{}) (bool, interface
 
 		}(&wg, i, peer, N, seq, v, &count, &max_n_a, &v_prime, &highest_n)
 	}
+
 	wg.Wait()
+	//log.Printf("final va: %v, %v, %v", px.me, max_n_a, v_prime)
+
 	// no majority is satisfied
 	if count < (len(px.peers) + 1)/ 2 {
 		return false, 0, highest_n

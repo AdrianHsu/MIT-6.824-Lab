@@ -49,14 +49,16 @@ type KVPaxos struct {
 	seq        int
 }
 
-func (kv *KVPaxos) SyncUp(xop Op) {
+func (kv *KVPaxos) SyncUp(xop Op) bool {
 	to := 10 * time.Millisecond
+	doing := false
 	for {
 		status, op := kv.px.Status(kv.seq)
 		DPrintf("server %v, seq %v, status %v", kv.me, kv.seq, status)
 
 		if status == paxos.Decided {
 			op := op.(Op)
+
 			if xop.OpID == op.OpID {
 				break
 			} else if op.Operation == "Put" || op.Operation == "Append" {
@@ -65,18 +67,26 @@ func (kv *KVPaxos) SyncUp(xop Op) {
 			} else {
 				//value, _ := kv.doGet(op.Key)
 				//DPrintf("get: %v", value)
+
 			}
+			//kv.px.Done(kv.seq)
 			kv.seq += 1
+			doing = false
 		} else {
-			kv.px.Start(kv.seq, xop)
-			time.Sleep(to)
-			if to < 10 * time.Second {
-				to *= 2
+			if !doing {
+				kv.px.Start(kv.seq, xop)
+				DPrintf("%v: do start for seq: %v, value=%v", kv.me, kv.seq, xop.Value)
+				doing = true
 			}
+			time.Sleep(to)
+			//if to < 10 * time.Second {
+			//	to *= 2
+			//}
 		}
 	}
 	kv.px.Done(kv.seq)
 	kv.seq += 1
+	return true
 }
 
 func (kv *KVPaxos) doGet(Key string) (string, bool) {
@@ -107,7 +117,11 @@ func (kv *KVPaxos) Get(args *GetArgs, reply *GetReply) error {
 	kv.mu.Lock()
 	defer kv.mu.Unlock()
 	op := Op{args.Hash, "Get", args.Key, ""}
-	kv.SyncUp(op)
+	if !kv.SyncUp(op) {
+		reply.Err = "Get"
+		reply.FailSrv = kv.me
+		return nil
+	}
 	reply.Value, _ = kv.doGet(args.Key)
 	return nil
 }
@@ -117,7 +131,11 @@ func (kv *KVPaxos) PutAppend(args *PutAppendArgs, reply *PutAppendReply) error {
 	kv.mu.Lock()
 	defer kv.mu.Unlock()
 	op := Op{args.Hash, args.Op, args.Key, args.Value}
-	kv.SyncUp(op)
+	if !kv.SyncUp(op) {
+		reply.Err = "PutAppend"
+		reply.FailSrv = kv.me
+		return nil
+	}
 	kv.doPutAppend(args.Op, args.Key, args.Value)
 	return nil
 }

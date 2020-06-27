@@ -1,6 +1,9 @@
 package kvpaxos
 
-import "testing"
+import (
+	"log"
+	"testing"
+)
 import "runtime"
 import "strconv"
 import "os"
@@ -298,10 +301,10 @@ func TestPartition(t *testing.T) {
 	fmt.Printf("Test: Completion after heal ...\n")
 
 	part(t, tag, nservers, []int{0, 2, 3, 4}, []int{1}, []int{})
-
+	log.Printf("connected!!")
 	select {
 	case <-done0:
-	case <-time.After(30 * 100 * time.Millisecond):
+	case <-time.After(30 * 1500 * time.Millisecond):
 		t.Fatalf("Put did not complete")
 	}
 
@@ -315,10 +318,10 @@ func TestPartition(t *testing.T) {
 	check(t, cka[0], "1", "15")
 
 	part(t, tag, nservers, []int{0, 1, 2}, []int{3, 4}, []int{})
-
+	log.Printf("now 0,1,2 get connected")
 	select {
 	case <-done1:
-	case <-time.After(100 * 100 * time.Millisecond):
+	case <-time.After(100 * 1500 * time.Millisecond):
 		t.Fatalf("Get did not complete")
 	}
 
