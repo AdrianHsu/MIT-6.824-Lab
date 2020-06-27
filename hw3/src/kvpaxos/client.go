@@ -1,7 +1,6 @@
 package kvpaxos
 
 import (
-	"log"
 	"net/rpc"
 	"time"
 )
@@ -80,7 +79,7 @@ func (ck *Clerk) Get(key string) string {
 		if ok && reply.Err == "" {
 			break
 		} else {
-			log.Printf("Get on server %v fails. change another one", reply.FailSrv)
+			//log.Printf("Get on server %v fails. change another one", reply.FailSrv)
 		}
 		time.Sleep(100 * time.Millisecond)
 		i += 1
@@ -103,7 +102,7 @@ func (ck *Clerk) PutAppend(key string, value string, op string) {
 		if ok && reply.Err == "" {
 			break
 		} else {
-			log.Printf("PutAppend on server %v fails. change another one", reply.FailSrv)
+			//log.Printf("PutAppend on server %v fails. change another one", reply.FailSrv)
 		}
 		time.Sleep(100 * time.Millisecond)
 		i += 1

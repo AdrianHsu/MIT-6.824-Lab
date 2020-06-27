@@ -105,6 +105,7 @@ func (kv *KVPaxos) doPutAppend(Operation string, Key string, Value string, hash 
 	if !ok { // not exists
 		// init. both are the same for either put / append
 		kv.database.Store(Key, Value)
+
 	} else { // load
 		if Operation == "Put" {
 			kv.database.Store(Key, Value)
@@ -113,10 +114,10 @@ func (kv *KVPaxos) doPutAppend(Operation string, Key string, Value string, hash 
 			_, ok := kv.hashVals.Load(hash)
 			if !ok {
 				kv.database.Store(Key, vals+Value)
-				kv.hashVals.Store(hash, 1) // an arbitrary value
 			}
 		}
 	}
+	kv.hashVals.Store(hash, 1) // an arbitrary value
 }
 
 func (kv *KVPaxos) Get(args *GetArgs, reply *GetReply) error {
@@ -150,7 +151,7 @@ func (kv *KVPaxos) PutAppend(args *PutAppendArgs, reply *PutAppendReply) error {
 // tell the server to shut itself down.
 // please do not change these two functions.
 func (kv *KVPaxos) kill() {
-	DPrintf("Kill(%d): die\n", kv.me)
+	//DPrintf("Kill(%d): die\n", kv.me)
 	atomic.StoreInt32(&kv.dead, 1)
 	kv.l.Close()
 	kv.px.Kill()
