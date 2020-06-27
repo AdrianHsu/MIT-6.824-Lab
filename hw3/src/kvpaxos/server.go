@@ -74,8 +74,8 @@ func (kv *KVPaxos) SyncUp(xop Op) {
 				to *= 2
 			}
 		}
-
 	}
+	kv.px.Done(kv.seq)
 	kv.seq += 1
 }
 
