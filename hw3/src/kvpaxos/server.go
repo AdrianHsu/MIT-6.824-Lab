@@ -56,7 +56,7 @@ func (kv *KVPaxos) SyncUp(xop Op) bool {
 	doing := false
 	for {
 		status, op := kv.px.Status(kv.seq)
-		DPrintf("server %v, seq %v, status %v", kv.me, kv.seq, status)
+		//DPrintf("server %v, seq %v, status %v", kv.me, kv.seq, status)
 
 		if status == paxos.Decided {
 			op := op.(Op)
@@ -77,7 +77,7 @@ func (kv *KVPaxos) SyncUp(xop Op) bool {
 		} else {
 			if !doing {
 				kv.px.Start(kv.seq, xop)
-				DPrintf("%v: do start for seq: %v, value=%v", kv.me, kv.seq, xop.Value)
+				//DPrintf("%v: do start for seq: %v, value=%v", kv.me, kv.seq, xop.Value)
 				doing = true
 			}
 			time.Sleep(to)
