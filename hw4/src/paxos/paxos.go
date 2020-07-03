@@ -152,7 +152,7 @@ func (px *Paxos) ProposerPropose(seq int, v interface{}) {
 				// px.me is srv 0: wait for 2 second
 				// px.me is srv 1: wait for 3 second
 				// px.me is srv 4: wait for 5 second
-				waitTime := 500 * ( px.me + 2 )
+				waitTime := 300 * ( px.me + 2 )
 				time.Sleep(time.Millisecond * time.Duration(waitTime))
 			}
 
