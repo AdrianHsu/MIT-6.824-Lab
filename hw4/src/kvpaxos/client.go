@@ -1,6 +1,9 @@
 package kvpaxos
 
-import "net/rpc"
+import (
+	"net/rpc"
+	"time"
+)
 import "crypto/rand"
 import "math/big"
 
@@ -66,7 +69,23 @@ func call(srv string, rpcname string,
 //
 func (ck *Clerk) Get(key string) string {
 	// You will have to modify this function.
-	return ""
+	args := &GetArgs{key, nrand()}
+	reply := &GetReply{}
+
+	var ok = false
+	var i = 0
+	for !ok {
+		ok = call(ck.servers[i], "KVPaxos.Get", args, reply)
+		if ok {
+			break
+		} else {
+			//log.Printf("Get on server %v fails. change another one", reply.FailSrv)
+			time.Sleep(100 * time.Millisecond)
+			i += 1
+			i %= len(ck.servers)
+		}
+	}
+	return reply.Value
 }
 
 //
@@ -74,6 +93,21 @@ func (ck *Clerk) Get(key string) string {
 //
 func (ck *Clerk) PutAppend(key string, value string, op string) {
 	// You will have to modify this function.
+	args := &PutAppendArgs{key, value, op, nrand()}
+	reply := &PutAppendReply{}
+	var ok = false
+	var i = 0
+	for !ok {
+		ok = call(ck.servers[i], "KVPaxos.PutAppend", args, reply)
+		if ok {
+			break
+		} else {
+			//log.Printf("PutAppend on server %v fails. change another one", reply.FailSrv)
+			time.Sleep(100 * time.Millisecond)
+			i += 1
+			i %= len(ck.servers)
+		}
+	}
 }
 
 func (ck *Clerk) Put(key string, value string) {
