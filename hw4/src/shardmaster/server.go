@@ -91,15 +91,17 @@ func (sm *ShardMaster) join(op Op) {
 	}
 	newGroups[op.GID] = op.Servers
 
-	var i = 0
-	var done = false
-	for done == false {
-		for k, _ := range newGroups {
-			shards[i] = k
-			i += 1
-			if i == NShards {
-				done = true
-				break
+	var avg = NShards / len(newGroups)
+	counter := map[int64]int{}
+	for i, sh := range shards {
+		if sh == 0 {
+			shards[i] = op.GID
+			counter[op.GID] += 1
+		} else {
+			counter[sh] += 1
+			if counter[sh] > avg {
+				shards[i] = op.GID
+				counter[op.GID] += 1
 			}
 		}
 	}
