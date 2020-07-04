@@ -1,6 +1,9 @@
 package shardmaster
 
-import "net"
+import (
+	"net"
+	"time"
+)
 import "fmt"
 import "net/rpc"
 import "log"
@@ -21,24 +24,149 @@ type ShardMaster struct {
 	unreliable int32 // for testing
 	px         *paxos.Paxos
 
-	configs []Config // indexed by config num
+	configs [] Config // indexed by config num
+	// added by adrian
+	exist      map[int64]bool
 }
 
+func nrand() int64 {
+	bigx := rand.Int63()
+	return bigx
+}
 
 type Op struct {
 	// Your data here.
+	HashID       int64
+	Operation    string // Join, Leave, Move, Query
+	GID          int64
+	Servers      [] string
 }
 
+func (sm *ShardMaster) Tail() Config {
+	return sm.configs[len(sm.configs) - 1]
+}
+
+// created by Adrian
+func (sm *ShardMaster) SyncUp(xop Op) {
+
+	to := 10 * time.Millisecond
+	doing := false
+	for {
+		status, op := sm.px.Status(sm.Tail().Num)
+		if status == paxos.Decided {
+
+			op := op.(Op)
+			if op.HashID == xop.HashID {
+				break
+			}
+			if op.Operation == "Join" {
+				sm.join(op)
+			} else if op.Operation == "Leave" {
+				sm.leave(op)
+			}
+
+			doing = false
+			to = 10 * time.Millisecond
+		} else {
+			if !doing {
+				sm.px.Start(sm.Tail().Num, xop)
+				doing = true
+			}
+			time.Sleep(to)
+			to += 10 * time.Millisecond
+		}
+	}
+	sm.px.Done(sm.Tail().Num)
+}
+
+func (sm *ShardMaster) join(op Op) {
+	groups := sm.Tail().Groups
+	num := sm.Tail().Num
+	shards := sm.Tail().Shards
+
+	newGroups := map[int64][]string{}
+	for k,v := range groups {
+		newGroups[k] = v
+	}
+	for _, s := range op.Servers {
+		newGroups[op.GID] = append(newGroups[op.GID], s)
+	}
+	var i = 0
+	var done = false
+	for done == false {
+		for k, _ := range newGroups {
+			shards[i] = k
+			i += 1
+			if i == NShards {
+				done = true
+				break
+			}
+		}
+	}
+
+	num += 1
+	sm.configs = append(sm.configs, Config{num,shards, newGroups})
+}
 
 func (sm *ShardMaster) Join(args *JoinArgs, reply *JoinReply) error {
 	// Your code here.
+	sm.mu.Lock()
+	defer sm.mu.Unlock()
+	if sm.exist[args.GID] == true {
+		return nil
+	} else {
+		sm.exist[args.GID] = true
+	}
 
+	op := Op{nrand(), "Join",args.GID, args.Servers}
+	sm.SyncUp(op)
+	sm.join(op)
 	return nil
 }
 
+func (sm *ShardMaster) leave(op Op) {
+	groups := sm.Tail().Groups
+	num := sm.Tail().Num
+	shards := sm.Tail().Shards
+	newGroups := map[int64][]string{}
+
+	for k, v := range groups {
+		if k == op.GID {
+			// ignore this.
+		} else {
+			newGroups[k] = v
+		}
+	}
+
+	var i = 0
+	var done = false
+	for done == false {
+		for k, _ := range newGroups {
+			shards[i] = k
+			i += 1
+			if i == NShards {
+				done = true
+				break
+			}
+		}
+	}
+
+	num += 1
+	sm.configs = append(sm.configs, Config{num,shards, newGroups})
+}
 func (sm *ShardMaster) Leave(args *LeaveArgs, reply *LeaveReply) error {
 	// Your code here.
+	sm.mu.Lock()
+	defer sm.mu.Unlock()
+	if sm.exist[args.GID] == false {
+		return nil
+	} else {
+		sm.exist[args.GID] = false
+	}
 
+	op := Op{nrand(), "Leave",args.GID, nil}
+	sm.SyncUp(op)
+	sm.leave(op)
 	return nil
 }
 
@@ -50,7 +178,13 @@ func (sm *ShardMaster) Move(args *MoveArgs, reply *MoveReply) error {
 
 func (sm *ShardMaster) Query(args *QueryArgs, reply *QueryReply) error {
 	// Your code here.
-
+	sm.mu.Lock()
+	defer sm.mu.Unlock()
+	if args.Num == -1 {
+		reply.Config = sm.Tail()
+	} else {
+		reply.Config = sm.configs[args.Num]
+	}
 	return nil
 }
 
@@ -89,8 +223,9 @@ func StartServer(servers []string, me int) *ShardMaster {
 	sm := new(ShardMaster)
 	sm.me = me
 
-	sm.configs = make([]Config, 1)
+	sm.configs = make([]Config, 1) // len = 1
 	sm.configs[0].Groups = map[int64][]string{}
+	sm.exist = map[int64]bool{}
 
 	rpcs := rpc.NewServer()
 
