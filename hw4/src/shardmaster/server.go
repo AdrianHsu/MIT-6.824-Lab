@@ -40,6 +40,7 @@ type Op struct {
 	Operation    string // Join, Leave, Move, Query
 	GID          int64
 	Servers      [] string
+	ShardNum     int
 }
 
 func (sm *ShardMaster) Tail() Config {
@@ -58,13 +59,13 @@ func (sm *ShardMaster) SyncUp(xop Op) {
 			op := op.(Op)
 			if op.HashID == xop.HashID {
 				break
-			}
-			if op.Operation == "Join" {
+			} else if op.Operation == "Join" {
 				sm.join(op)
 			} else if op.Operation == "Leave" {
 				sm.leave(op)
+			} else if op.Operation == "Move" {
+				sm.move(op)
 			}
-
 			doing = false
 			to = 10 * time.Millisecond
 		} else {
@@ -118,7 +119,7 @@ func (sm *ShardMaster) Join(args *JoinArgs, reply *JoinReply) error {
 		sm.exist[args.GID] = true
 	}
 
-	op := Op{nrand(), "Join",args.GID, args.Servers}
+	op := Op{nrand(), "Join",args.GID, args.Servers, -1}
 	sm.SyncUp(op)
 	sm.join(op)
 	return nil
@@ -164,15 +165,29 @@ func (sm *ShardMaster) Leave(args *LeaveArgs, reply *LeaveReply) error {
 		sm.exist[args.GID] = false
 	}
 
-	op := Op{nrand(), "Leave",args.GID, nil}
+	op := Op{nrand(), "Leave",args.GID, nil, -1}
 	sm.SyncUp(op)
 	sm.leave(op)
 	return nil
 }
 
+func (sm *ShardMaster) move(op Op) {
+	groups := sm.Tail().Groups
+	num := sm.Tail().Num
+	shards := sm.Tail().Shards
+
+	shards[op.ShardNum] = op.GID
+	num += 1
+	sm.configs = append(sm.configs, Config{num,shards, groups})
+}
+
 func (sm *ShardMaster) Move(args *MoveArgs, reply *MoveReply) error {
 	// Your code here.
-
+	sm.mu.Lock()
+	defer sm.mu.Unlock()
+	op := Op{nrand(), "Shard",args.GID, nil, args.Shard}
+	sm.SyncUp(op)
+	sm.move(op)
 	return nil
 }
 
