@@ -25,8 +25,6 @@ type ShardMaster struct {
 	px         *paxos.Paxos
 
 	configs [] Config // indexed by config num
-	// added by adrian
-	exist      map[int64]bool
 }
 
 func nrand() int64 {
@@ -43,11 +41,8 @@ type Op struct {
 	ShardNum     int
 }
 
-func (sm *ShardMaster) Len() int {
-	return len(sm.configs)
-}
 func (sm *ShardMaster) Tail() Config {
-	return sm.configs[sm.Len() - 1]
+	return sm.configs[len(sm.configs) - 1]
 }
 
 // created by Adrian
@@ -56,7 +51,7 @@ func (sm *ShardMaster) SyncUp(xop Op) {
 	to := 10 * time.Millisecond
 	doing := false
 	for {
-		status, op := sm.px.Status(sm.Len())
+		status, op := sm.px.Status(sm.Tail().Num)
 		if status == paxos.Decided {
 
 			op := op.(Op)
@@ -68,23 +63,24 @@ func (sm *ShardMaster) SyncUp(xop Op) {
 				sm.leave(op)
 			} else if op.Operation == "Move" {
 				sm.move(op)
+			} else if op.Operation == "Query" {
+				sm.query(op)
 			}
-
 			doing = false
-			sm.px.Done(sm.Len())
 		} else {
 			if !doing {
-				sm.px.Start(sm.Len(), xop)
+				sm.px.Start(sm.Tail().Num, xop)
 				doing = true
 			}
 			time.Sleep(to)
 			to += 10 * time.Millisecond
 		}
 	}
-	sm.px.Done(sm.Len())
+	sm.px.Done(sm.Tail().Num)
 }
 
 func (sm *ShardMaster) join(op Op) {
+
 	groups := sm.Tail().Groups
 	num := sm.Tail().Num
 	shards := sm.Tail().Shards
@@ -93,9 +89,7 @@ func (sm *ShardMaster) join(op Op) {
 	for k,v := range groups {
 		newGroups[k] = v
 	}
-	for _, s := range op.Servers {
-		newGroups[op.GID] = append(newGroups[op.GID], s)
-	}
+	newGroups[op.GID] = op.Servers
 
 	var i = 0
 	var done = false
@@ -118,18 +112,20 @@ func (sm *ShardMaster) Join(args *JoinArgs, reply *JoinReply) error {
 	// Your code here.
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
-	if sm.exist[args.GID] == true {
-		return nil
-	} else {
-		sm.exist[args.GID] = true
-	}
+
 	op := Op{nrand(), "Join",args.GID, args.Servers, -1}
 	sm.SyncUp(op)
+	if _, ok := sm.Tail().Groups[args.GID]; ok {
+		log.Printf("failed %v join %v, %v", sm.me, len(sm.Tail().Groups), args.GID)
+		return nil
+	}
 	sm.join(op)
+	log.Printf("%v join %v, %v", sm.me, len(sm.Tail().Groups), args.GID)
 	return nil
 }
 
 func (sm *ShardMaster) leave(op Op) {
+
 	groups := sm.Tail().Groups
 	num := sm.Tail().Num
 	shards := sm.Tail().Shards
@@ -164,15 +160,15 @@ func (sm *ShardMaster) Leave(args *LeaveArgs, reply *LeaveReply) error {
 	// Your code here.
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
-	if sm.exist[args.GID] == false {
-		return nil
-	} else {
-		sm.exist[args.GID] = false
-	}
 
 	op := Op{nrand(), "Leave",args.GID, nil, -1}
 	sm.SyncUp(op)
+	if _, ok := sm.Tail().Groups[args.GID]; !ok {
+		//log.Printf("failed to leave: %v, %v", len(sm.Tail().Groups), args.GID)
+		return nil
+	}
 	sm.leave(op)
+	log.Printf("%v leave %v, %v", sm.me, len(sm.Tail().Groups), args.GID)
 	return nil
 }
 
@@ -195,21 +191,37 @@ func (sm *ShardMaster) Move(args *MoveArgs, reply *MoveReply) error {
 	// Your code here.
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
-	if sm.exist[args.GID] == false {
-		return nil
-	}
 
 	op := Op{nrand(), "Move",args.GID, nil, args.Shard}
 	sm.SyncUp(op)
+	if _, ok := sm.Tail().Groups[args.GID]; !ok {
+		return nil
+	}
 	sm.move(op)
 	return nil
 }
+func (sm *ShardMaster) query(op Op) { // just like Get()
+	groups := sm.Tail().Groups
+	num := sm.Tail().Num
+	shards := sm.Tail().Shards
+	newGroups := map[int64][]string{}
 
+	for k, v := range groups {
+		newGroups[k] = v
+	}
+	num += 1
+	sm.configs = append(sm.configs, Config{num,shards, newGroups})
+}
 func (sm *ShardMaster) Query(args *QueryArgs, reply *QueryReply) error {
 	// Your code here.
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
-	if args.Num == -1 {
+
+	op := Op{nrand(), "Query",-1, nil, -1}
+	sm.SyncUp(op)
+	sm.query(op)
+
+	if args.Num == -1 || args.Num > sm.Tail().Num {
 		reply.Config = sm.Tail()
 	} else {
 		reply.Config = sm.configs[args.Num]
@@ -254,8 +266,6 @@ func StartServer(servers []string, me int) *ShardMaster {
 
 	sm.configs = make([]Config, 1) // len = 1
 	sm.configs[0].Groups = map[int64][]string{}
-	sm.exist = map[int64]bool{}
-
 	rpcs := rpc.NewServer()
 
 	gob.Register(Op{})
