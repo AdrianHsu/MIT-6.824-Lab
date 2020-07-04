@@ -224,7 +224,7 @@ func TestBasic(t *testing.T) {
 		go func(i int) {
 			defer func() { ca[i] <- true }()
 			var gid int64 = gids[i]
-			cka[(i+0)%nservers].Join(gid+1000, []string{"a", "b", "c"})
+			cka[(i+0)%nservers].Join(gid + 1000, []string{"a", "b", "c"})
 			cka[(i+0)%nservers].Join(gid, []string{"a", "b", "c"})
 			cka[(i+1)%nservers].Leave(gid + 1000)
 		}(xi)

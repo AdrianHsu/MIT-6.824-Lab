@@ -43,8 +43,11 @@ type Op struct {
 	ShardNum     int
 }
 
+func (sm *ShardMaster) Len() int {
+	return len(sm.configs)
+}
 func (sm *ShardMaster) Tail() Config {
-	return sm.configs[len(sm.configs) - 1]
+	return sm.configs[sm.Len() - 1]
 }
 
 // created by Adrian
@@ -53,7 +56,7 @@ func (sm *ShardMaster) SyncUp(xop Op) {
 	to := 10 * time.Millisecond
 	doing := false
 	for {
-		status, op := sm.px.Status(sm.Tail().Num)
+		status, op := sm.px.Status(sm.Len())
 		if status == paxos.Decided {
 
 			op := op.(Op)
@@ -66,18 +69,19 @@ func (sm *ShardMaster) SyncUp(xop Op) {
 			} else if op.Operation == "Move" {
 				sm.move(op)
 			}
+
 			doing = false
-			to = 10 * time.Millisecond
+			sm.px.Done(sm.Len())
 		} else {
 			if !doing {
-				sm.px.Start(sm.Tail().Num, xop)
+				sm.px.Start(sm.Len(), xop)
 				doing = true
 			}
 			time.Sleep(to)
 			to += 10 * time.Millisecond
 		}
 	}
-	sm.px.Done(sm.Tail().Num)
+	sm.px.Done(sm.Len())
 }
 
 func (sm *ShardMaster) join(op Op) {
@@ -92,6 +96,7 @@ func (sm *ShardMaster) join(op Op) {
 	for _, s := range op.Servers {
 		newGroups[op.GID] = append(newGroups[op.GID], s)
 	}
+
 	var i = 0
 	var done = false
 	for done == false {
@@ -118,7 +123,6 @@ func (sm *ShardMaster) Join(args *JoinArgs, reply *JoinReply) error {
 	} else {
 		sm.exist[args.GID] = true
 	}
-
 	op := Op{nrand(), "Join",args.GID, args.Servers, -1}
 	sm.SyncUp(op)
 	sm.join(op)
@@ -143,6 +147,7 @@ func (sm *ShardMaster) leave(op Op) {
 	var done = false
 	for done == false {
 		for k, _ := range newGroups {
+
 			shards[i] = k
 			i += 1
 			if i == NShards {
@@ -175,17 +180,26 @@ func (sm *ShardMaster) move(op Op) {
 	groups := sm.Tail().Groups
 	num := sm.Tail().Num
 	shards := sm.Tail().Shards
+	newGroups := map[int64][]string{}
+
+	for k, v := range groups {
+		newGroups[k] = v
+	}
 
 	shards[op.ShardNum] = op.GID
 	num += 1
-	sm.configs = append(sm.configs, Config{num,shards, groups})
+	sm.configs = append(sm.configs, Config{num,shards, newGroups})
 }
 
 func (sm *ShardMaster) Move(args *MoveArgs, reply *MoveReply) error {
 	// Your code here.
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
-	op := Op{nrand(), "Shard",args.GID, nil, args.Shard}
+	if sm.exist[args.GID] == false {
+		return nil
+	}
+
+	op := Op{nrand(), "Move",args.GID, nil, args.Shard}
 	sm.SyncUp(op)
 	sm.move(op)
 	return nil
