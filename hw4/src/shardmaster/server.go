@@ -116,11 +116,11 @@ func (sm *ShardMaster) Join(args *JoinArgs, reply *JoinReply) error {
 	op := Op{nrand(), "Join",args.GID, args.Servers, -1}
 	sm.SyncUp(op)
 	if _, ok := sm.Tail().Groups[args.GID]; ok {
-		log.Printf("failed %v join %v, %v", sm.me, len(sm.Tail().Groups), args.GID)
+		//log.Printf("failed %v join %v, %v", sm.me, len(sm.Tail().Groups), args.GID)
 		return nil
 	}
 	sm.join(op)
-	log.Printf("%v join %v, %v", sm.me, len(sm.Tail().Groups), args.GID)
+	//log.Printf("%v join %v, %v", sm.me, len(sm.Tail().Groups), args.GID)
 	return nil
 }
 
@@ -168,7 +168,7 @@ func (sm *ShardMaster) Leave(args *LeaveArgs, reply *LeaveReply) error {
 		return nil
 	}
 	sm.leave(op)
-	log.Printf("%v leave %v, %v", sm.me, len(sm.Tail().Groups), args.GID)
+	//log.Printf("%v leave %v, %v", sm.me, len(sm.Tail().Groups), args.GID)
 	return nil
 }
 
