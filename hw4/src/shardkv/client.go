@@ -1,6 +1,8 @@
 package shardkv
 
-import "shardmaster"
+import (
+	"shardmaster"
+)
 import "net/rpc"
 import "time"
 import "sync"
@@ -100,6 +102,7 @@ func (ck *Clerk) Get(key string) string {
 			for _, srv := range servers {
 				args := &GetArgs{}
 				args.Key = key
+				args.Hash = nrand() // added by Adrian
 				var reply GetReply
 				ok := call(srv, "ShardKV.Get", args, &reply)
 				if ok && (reply.Err == OK || reply.Err == ErrNoKey) {
@@ -139,8 +142,10 @@ func (ck *Clerk) PutAppend(key string, value string, op string) {
 				args.Key = key
 				args.Value = value
 				args.Op = op
+				args.Hash = nrand() // added by Adrian
 				var reply PutAppendReply
 				ok := call(srv, "ShardKV.PutAppend", args, &reply)
+				//log.Printf("%v, %v", srv, ok)
 				if ok && reply.Err == OK {
 					return
 				}
