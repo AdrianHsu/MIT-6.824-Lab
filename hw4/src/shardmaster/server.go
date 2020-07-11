@@ -85,7 +85,7 @@ func (sm *ShardMaster) join(op Op) {
 	num := sm.Tail().Num
 	shards := sm.Tail().Shards
 
-	newGroups := map[int64][]string{}
+	newGroups := make(map[int64][]string)
 	for k,v := range groups {
 		newGroups[k] = v
 	}
@@ -131,7 +131,7 @@ func (sm *ShardMaster) leave(op Op) {
 	groups := sm.Tail().Groups
 	num := sm.Tail().Num
 	shards := sm.Tail().Shards
-	newGroups := map[int64][]string{}
+	newGroups := make(map[int64][]string)
 
 	for k, v := range groups {
 		if k == op.GID {
@@ -178,7 +178,7 @@ func (sm *ShardMaster) move(op Op) {
 	groups := sm.Tail().Groups
 	num := sm.Tail().Num
 	shards := sm.Tail().Shards
-	newGroups := map[int64][]string{}
+	newGroups := make(map[int64][]string)
 
 	for k, v := range groups {
 		newGroups[k] = v
@@ -206,7 +206,7 @@ func (sm *ShardMaster) query(op Op) { // just like Get()
 	groups := sm.Tail().Groups
 	num := sm.Tail().Num
 	shards := sm.Tail().Shards
-	newGroups := map[int64][]string{}
+	newGroups := make(map[int64][]string)
 
 	for k, v := range groups {
 		newGroups[k] = v
@@ -267,7 +267,7 @@ func StartServer(servers []string, me int) *ShardMaster {
 	sm.me = me
 
 	sm.configs = make([]Config, 1) // len = 1
-	sm.configs[0].Groups = map[int64][]string{}
+	sm.configs[0].Groups = make(map[int64][]string)
 	rpcs := rpc.NewServer()
 
 	gob.Register(Op{})

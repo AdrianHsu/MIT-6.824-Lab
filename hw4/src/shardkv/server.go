@@ -1,6 +1,8 @@
 package shardkv
 
-import "net"
+import (
+	"net"
+)
 import "fmt"
 import "net/rpc"
 import "log"
@@ -24,6 +26,16 @@ func DPrintf(format string, a ...interface{}) (n int, err error) {
 	return
 }
 
+type DataStore struct {
+	Db  [shardmaster.NShards]map[string]string
+	Hash   [shardmaster.NShards]map[int64]int
+}
+
+type ShardData struct {
+	Db map[string]string
+	Hash map[int64]int
+	ShardNum int
+}
 
 type Op struct {
 	// Your definitions here.
@@ -32,6 +44,7 @@ type Op struct {
 	Operation string
 	Key       string
 	Value     string
+	Extra     interface{}
 }
 
 
@@ -48,8 +61,7 @@ type ShardKV struct {
 
 	// Your definitions here.
 	config     shardmaster.Config // cache config
-	database   sync.Map
-	hashVals   sync.Map
+	datastore  DataStore
 	seq        int
 }
 
@@ -59,25 +71,30 @@ func (kv *ShardKV) SyncUp(xop Op) {
 	doing := false
 	for {
 		status, op := kv.px.Status(kv.seq)
-
+		DPrintf("me=%v, status=%v, op=%v, seq=%v, gid=%v", kv.me, status, op, kv.seq, kv.gid)
 		if status == paxos.Decided {
 
 			op := op.(Op)
+			DPrintf("done: me=%v, status=%v, op=%v, seq=%v, gid=%v", kv.me, status, op, kv.seq, kv.gid)
+
 			if xop.OpID == op.OpID {
 				break
 			} else if op.Operation == "Put" || op.Operation == "Append" {
 				kv.doPutAppend(op.Operation, op.Key, op.Value, op.OpID)
+			} else if op.Operation == "Reconfigure" {
+				extra := op.Extra.(ShardData)
+				//DPrintf("reconf: %v, %v, %v", kv.me, extra, kv.seq)
+				kv.doReconfigure(&extra)
+				//DPrintf("done reconf: %v, %v, %v", kv.me, extra, kv.seq)
 			}
 			kv.seq += 1
 			doing = false
 		} else {
 			if !doing {
-
 				kv.px.Start(kv.seq, xop)
 				doing = true
 			}
 			time.Sleep(to)
-
 			to += 10 * time.Millisecond
 		}
 	}
@@ -88,55 +105,131 @@ func (kv *ShardKV) SyncUp(xop Op) {
 
 // added by Adrian
 func (kv *ShardKV) doGet(Key string) (string, bool) {
-	val, ok := kv.database.Load(Key)
+
+	db := kv.datastore.Db[key2shard(Key)]
+	val, ok := db[Key]
 	if !ok {
 		return "", false
 	} else {
-		return val.(string), true
+		return val, true
 	}
-}
-// added by Adrian
-func (kv *ShardKV) doPutAppend(Operation string, Key string, Value string, hash int64) {
-
-	val, ok := kv.database.Load(Key)
-	if !ok { // if not exists
-		kv.database.Store(Key, Value)
-	} else { // load
-		if Operation == "Put" {
-			kv.database.Store(Key, Value)
-		} else if Operation == "Append" {
-			vals := val.(string)
-			_, ok := kv.hashVals.Load(hash)
-			if !ok {
-				kv.database.Store(Key, vals+Value)
-			}
-		}
-	}
-	kv.hashVals.Store(hash, 1)
 }
 
 func (kv *ShardKV) Get(args *GetArgs, reply *GetReply) error {
 	// Your code here.
 	kv.mu.Lock()
 	defer kv.mu.Unlock()
-
-	op := Op{args.Hash, "Get", args.Key, ""}
+	//DPrintf("start Get %v", kv.me)
+	if kv.config.Shards[key2shard(args.Key)] != kv.gid {
+		reply.Err = ErrWrongGroup
+		//DPrintf("wrong group")
+		return nil
+	}
+	op := Op{nrand(), "Get", args.Key, "", nil}
 	kv.SyncUp(op)
 	reply.Value, _ = kv.doGet(args.Key)
 	reply.Err = OK
+	//DPrintf("end Get %v", kv.me)
 	return nil
 }
+// added by Adrian
+func (kv *ShardKV) doPutAppend(Operation string, Key string, Value string, hash int64) {
 
+	db := kv.datastore.Db[key2shard(Key)]
+	h := kv.datastore.Hash[key2shard(Key)]
+
+	val, ok := db[Key]
+	if !ok { // if not exists
+		db[Key] = Value
+	} else { // load
+		if Operation == "Put" {
+			db[Key] = Value
+		} else if Operation == "Append" {
+			_, ok := h[hash]
+			if !ok {
+				db[Key] = val + Value
+			}
+		}
+	}
+	h[hash] = 1
+}
 // RPC handler for client Put and Append requests
 func (kv *ShardKV) PutAppend(args *PutAppendArgs, reply *PutAppendReply) error {
 	// Your code here.
 	kv.mu.Lock()
 	defer kv.mu.Unlock()
-	op := Op{args.Hash, args.Op, args.Key, args.Value}
+
+	if kv.config.Shards[key2shard(args.Key)] != kv.gid {
+		reply.Err = ErrWrongGroup
+		return nil
+	}
+
+	op := Op{nrand(), args.Op, args.Key, args.Value, nil}
 	kv.SyncUp(op)
 	kv.doPutAppend(args.Op, args.Key, args.Value, op.OpID)
 	reply.Err = OK
 	return nil
+}
+
+func (kv *ShardKV) doReconfigure(shardData *ShardData) {
+
+	for k, v := range shardData.Db {
+		kv.datastore.Db[shardData.ShardNum][k] = v
+	}
+	for k, v := range shardData.Hash {
+		kv.datastore.Hash[shardData.ShardNum][k] = v
+	}
+}
+
+func (kv *ShardKV) Reconfigure(args *ReconfigureArgs, reply *ReconfigureReply) error {
+
+	kv.mu.Lock()
+	defer kv.mu.Unlock()
+
+	op := Op{nrand(), "Sync", "", "", nil}
+	kv.SyncUp(op)
+
+	var db = make(map[string]string)
+	var hash = make(map[int64]int)
+	for k, v := range kv.datastore.Db[args.ShardNum] {
+		db[k] = v
+	}
+	for k, v := range kv.datastore.Hash[args.ShardNum] {
+		hash[k] = v
+	}
+
+	reply.Err = OK
+	reply.Database = db
+	reply.HashVal = hash
+	return nil
+}
+
+func (kv *ShardKV) checkShard(config shardmaster.Config) bool {
+	DPrintf("start: me=%v, shards=%v, gid=%v", kv.me, kv.config.Shards, kv.gid)
+
+	for i, oldGid := range kv.config.Shards {
+		newGid := config.Shards[i]
+
+		if oldGid != kv.gid && oldGid != 0 && newGid == kv.gid {
+			DPrintf("me: %v. change shard %v -> %v (is now mine), shard %v. gid: %v", kv.me, oldGid, newGid, i, kv.gid)
+			for _, srv := range kv.config.Groups[oldGid] {
+
+				args := &ReconfigureArgs{ShardNum: i}
+				var reply = ReconfigureReply{}
+				ok := call(srv, "ShardKV.Reconfigure", args, &reply)
+				if ok && reply.Err == OK {
+					shardData := ShardData{reply.Database, reply.HashVal, args.ShardNum}
+
+					op := Op{nrand(), "Reconfigure", "", "", shardData}
+					kv.SyncUp(op)
+					kv.doReconfigure(&shardData)
+					break
+				}
+			}
+		}
+	}
+	DPrintf("end: me=%v, shards=%v, gid=%v", kv.me, kv.config.Shards, kv.gid)
+	return true
 }
 
 //
@@ -145,13 +238,24 @@ func (kv *ShardKV) PutAppend(args *PutAppendArgs, reply *PutAppendReply) error {
 //
 func (kv *ShardKV) tick() {
 
+	kv.mu.Lock()
+	defer kv.mu.Unlock()
+
+	op := Op{nrand(), "Tick", "", "", nil}
+	kv.SyncUp(op)
+
 	config := kv.sm.Query(-1)
+	kv.checkShard(config)
+
+	kv.config.Num = config.Num
+	group := make(map[int64][]string)
+	for k, v := range config.Groups {
+		group[k] = v
+	}
+	kv.config.Groups = group
+
 	for i, v := range config.Shards {
-		if v != kv.config.Shards[i] {
-			//DPrintf("new config %v replaced, %v", config.Num, config.Shards)
-			kv.config = config
-			break
-		}
+		kv.config.Shards[i] = v
 	}
 }
 
@@ -193,6 +297,8 @@ func (kv *ShardKV) isunreliable() bool {
 func StartServer(gid int64, shardmasters []string,
 	servers []string, me int) *ShardKV {
 	gob.Register(Op{})
+	gob.Register(ShardData{})
+	gob.Register(DataStore{})
 
 	kv := new(ShardKV)
 	kv.me = me
@@ -201,7 +307,10 @@ func StartServer(gid int64, shardmasters []string,
 
 	// Your initialization code here.
 	// Don't call Join().
-	kv.config = kv.sm.Query(-1)
+	for i, _ := range kv.datastore.Db {
+		kv.datastore.Db[i] = make(map[string]string)
+		kv.datastore.Hash[i] = make(map[int64]int)
+	}
 
 	rpcs := rpc.NewServer()
 	rpcs.Register(kv)

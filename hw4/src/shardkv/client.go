@@ -102,15 +102,18 @@ func (ck *Clerk) Get(key string) string {
 			for _, srv := range servers {
 				args := &GetArgs{}
 				args.Key = key
-				args.Hash = nrand() // added by Adrian
+				//log.Printf("Get %v, %v", srv, args.Key)
 				var reply GetReply
 				ok := call(srv, "ShardKV.Get", args, &reply)
+				//log.Printf("end Get %v, %v, %v", srv, args.Key, reply.Err)
+
 				if ok && (reply.Err == OK || reply.Err == ErrNoKey) {
 					return reply.Value
 				}
 				if ok && (reply.Err == ErrWrongGroup) {
 					break
 				}
+
 			}
 		}
 
@@ -142,10 +145,8 @@ func (ck *Clerk) PutAppend(key string, value string, op string) {
 				args.Key = key
 				args.Value = value
 				args.Op = op
-				args.Hash = nrand() // added by Adrian
 				var reply PutAppendReply
 				ok := call(srv, "ShardKV.PutAppend", args, &reply)
-				//log.Printf("%v, %v", srv, ok)
 				if ok && reply.Err == OK {
 					return
 				}

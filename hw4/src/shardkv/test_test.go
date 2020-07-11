@@ -1,6 +1,9 @@
 package shardkv
 
-import "testing"
+import (
+	"log"
+	"testing"
+)
 import "shardmaster"
 import "runtime"
 import "strconv"
@@ -124,6 +127,7 @@ func TestBasic(t *testing.T) {
 	defer tc.cleanup()
 
 	fmt.Printf("Test: Basic Join/Leave ...\n")
+	time.Sleep(time.Second)
 
 	tc.join(0)
 
@@ -142,7 +146,6 @@ func TestBasic(t *testing.T) {
 		vals[i] = strconv.Itoa(rand.Int())
 		ck.Put(keys[i], vals[i])
 	}
-
 	// are keys still there after joins?
 	for g := 1; g < len(tc.groups); g++ {
 		tc.join(g)
@@ -157,7 +160,7 @@ func TestBasic(t *testing.T) {
 			ck.Put(keys[i], vals[i])
 		}
 	}
-
+	log.Printf("done first part")
 	// are keys still there after leaves?
 	for g := 0; g < len(tc.groups)-1; g++ {
 		tc.leave(g)

@@ -24,8 +24,6 @@ type PutAppendArgs struct {
 	// You'll have to add definitions here.
 	// Field names must start with capital letters,
 	// otherwise RPC will break.
-	Hash  int64
-
 }
 
 type PutAppendReply struct {
@@ -35,8 +33,6 @@ type PutAppendReply struct {
 type GetArgs struct {
 	Key string
 	// You'll have to add definitions here.
-	Hash  int64
-
 }
 
 type GetReply struct {
@@ -44,3 +40,12 @@ type GetReply struct {
 	Value string
 }
 
+type ReconfigureArgs struct  {
+	ShardNum   int
+}
+
+type ReconfigureReply struct {
+	Database   map[string]string
+	HashVal   map[int64]int
+	Err   Err
+}
