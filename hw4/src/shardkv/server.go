@@ -106,6 +106,7 @@ func (kv *ShardKV) SyncUp(xop Op) {
 // added by Adrian
 func (kv *ShardKV) doGet(Key string) (string, bool) {
 
+
 	db := kv.datastore.Db[key2shard(Key)]
 	val, ok := db[Key]
 	if !ok {
@@ -119,12 +120,12 @@ func (kv *ShardKV) Get(args *GetArgs, reply *GetReply) error {
 	// Your code here.
 	kv.mu.Lock()
 	defer kv.mu.Unlock()
-	//DPrintf("start Get %v", kv.me)
 	if kv.config.Shards[key2shard(args.Key)] != kv.gid {
 		reply.Err = ErrWrongGroup
 		//DPrintf("wrong group")
 		return nil
 	}
+	//DPrintf("start Get %v", kv.me)
 	op := Op{nrand(), "Get", args.Key, "", nil}
 	kv.SyncUp(op)
 	reply.Value, _ = kv.doGet(args.Key)
@@ -134,6 +135,8 @@ func (kv *ShardKV) Get(args *GetArgs, reply *GetReply) error {
 }
 // added by Adrian
 func (kv *ShardKV) doPutAppend(Operation string, Key string, Value string, hash int64) {
+
+
 
 	db := kv.datastore.Db[key2shard(Key)]
 	h := kv.datastore.Hash[key2shard(Key)]
@@ -158,7 +161,6 @@ func (kv *ShardKV) PutAppend(args *PutAppendArgs, reply *PutAppendReply) error {
 	// Your code here.
 	kv.mu.Lock()
 	defer kv.mu.Unlock()
-
 	if kv.config.Shards[key2shard(args.Key)] != kv.gid {
 		reply.Err = ErrWrongGroup
 		return nil
@@ -205,13 +207,14 @@ func (kv *ShardKV) Reconfigure(args *ReconfigureArgs, reply *ReconfigureReply) e
 }
 
 func (kv *ShardKV) checkShard(config shardmaster.Config) bool {
+
 	DPrintf("start: me=%v, shards=%v, gid=%v", kv.me, kv.config.Shards, kv.gid)
 
 	for i, oldGid := range kv.config.Shards {
 		newGid := config.Shards[i]
 
-		if oldGid != kv.gid && oldGid != 0 && newGid == kv.gid {
-			DPrintf("me: %v. change shard %v -> %v (is now mine), shard %v. gid: %v", kv.me, oldGid, newGid, i, kv.gid)
+		if oldGid != 0 && oldGid != kv.gid && newGid == kv.gid {
+			DPrintf("me: %v. change shard %v -> %v (is now mine), shard: %v. gid: %v", kv.me, oldGid, newGid, i, kv.gid)
 			for _, srv := range kv.config.Groups[oldGid] {
 
 				args := &ReconfigureArgs{ShardNum: i}
