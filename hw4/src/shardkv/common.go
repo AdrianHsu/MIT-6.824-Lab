@@ -21,10 +21,13 @@ type PutAppendArgs struct {
 	Key       string
 	Value     string
 	Op        string // "Put" or "Append"
-	ID        int64
+
+	ID        int64 // client ID (each client has an unique id)
+	// client's seq. everytime he performs put/get/append
+	// his seq will += 1
 	Seq       int
-	ConfigNum int
-	Shard     int
+	ConfigNum int // Number in the clients' config
+	Shard     int // from 0 ~ 9. the index of shards
 }
 
 type PutAppendReply struct {
@@ -33,6 +36,7 @@ type PutAppendReply struct {
 
 type GetArgs struct {
 	Key       string
+
 	ID        int64
 	Seq       int
 	ConfigNum int
@@ -47,10 +51,11 @@ type GetReply struct {
 type UpdateArgs struct {
 	Database     map[string]string
 	MaxClientSeq map[int64]int
+
+	ID           int64
+	Seq          int
 	Shard        int
 	ConfigNum    int
-	Seq          int
-	ID           int64
 }
 
 type UpdateReply struct {
