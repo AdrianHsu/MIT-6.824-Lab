@@ -1,8 +1,6 @@
 package shardkv
 
-import (
-	"net"
-)
+import "net"
 import "fmt"
 import "net/rpc"
 import "log"
@@ -15,9 +13,9 @@ import "syscall"
 import "encoding/gob"
 import "math/rand"
 import "shardmaster"
+import "reflect"
 
-
-const Debug = 1
+const Debug = 0
 
 func DPrintf(format string, a ...interface{}) (n int, err error) {
 	if Debug > 0 {
@@ -26,27 +24,15 @@ func DPrintf(format string, a ...interface{}) (n int, err error) {
 	return
 }
 
-type DataStore struct {
-	Db  [shardmaster.NShards]map[string]string
-	Hash   [shardmaster.NShards]map[int64]int
-}
-
-type ShardData struct {
-	Db map[string]string
-	Hash map[int64]int
-	ShardNum int
+type ShardState struct {
+	maxClientSeq map[int64]int
+	database     map[string]string
 }
 
 type Op struct {
-	// Your definitions here.
-	OpID      int64
-	// Put, Get, Append
 	Operation string
-	Key       string
-	Value     string
-	Extra     interface{}
+	Value     interface{}
 }
-
 
 type ShardKV struct {
 	mu         sync.Mutex
@@ -57,182 +43,196 @@ type ShardKV struct {
 	sm         *shardmaster.Clerk
 	px         *paxos.Paxos
 
-	gid        int64 // my replica group ID
+	gid    int64 // my replica group ID
+	config shardmaster.Config
 
-	// Your definitions here.
-	config     shardmaster.Config // cache config
-	datastore  DataStore
-	seq        int
+	lastApply  int
+	shardState map[int]*ShardState
+	isRecieved map[int]bool
 }
 
-func (kv *ShardKV) SyncUp(xop Op) {
+func MakeShardState() *ShardState {
+	shardState := &ShardState{}
+	shardState.database = make(map[string]string)
+	shardState.maxClientSeq = make(map[int64]int)
+	return shardState
+}
 
-	to := 10 * time.Millisecond
-	doing := false
+func (kv *ShardKV) Apply(op Op) {
+
+	log.Printf("Apply %v, gid %v, me %v", op, kv.gid, kv.me)
+	switch op.Operation {
+	case "Get":
+		if op.Value != nil {
+			args := op.Value.(GetArgs)
+			log.Printf("Get %v, %v", args.Key, kv.shardState[args.Shard].database[args.Key])
+
+			if args.Seq > kv.shardState[args.Shard].maxClientSeq[args.ID] {
+				kv.shardState[args.Shard].maxClientSeq[args.ID] = args.Seq
+			}
+		}
+	case "Put":
+		args := op.Value.(PutAppendArgs)
+		stateMachine := kv.shardState[args.Shard]
+		stateMachine.database[args.Key] = args.Value
+
+		if args.Seq > kv.shardState[args.Shard].maxClientSeq[args.ID] {
+			kv.shardState[args.Shard].maxClientSeq[args.ID] = args.Seq
+		}
+	case "Append":
+		args := op.Value.(PutAppendArgs)
+		stateMachine := kv.shardState[args.Shard]
+
+		value, ok := stateMachine.database[args.Key]
+		if !ok {
+			value = ""
+		}
+		stateMachine.database[args.Key] = value + args.Value
+
+		log.Printf("After append, %v", kv.shardState[args.Shard].database[args.Key])
+
+		if args.Seq > kv.shardState[args.Shard].maxClientSeq[args.ID] {
+			kv.shardState[args.Shard].maxClientSeq[args.ID] = args.Seq
+		}
+	case "Update":
+		args := op.Value.(UpdateArgs)
+		stateMachine := kv.shardState[args.Shard]
+
+		kv.isRecieved[args.Shard] = true
+		log.Printf("Update Recieved, config num %v, shard %d, gid %d, me %d",
+			kv.config.Num, args.Shard, kv.gid, kv.me)
+		stateMachine.database = args.Database
+		stateMachine.maxClientSeq = args.MaxClientSeq
+
+		if args.Seq > kv.shardState[args.Shard].maxClientSeq[args.ID] {
+			kv.shardState[args.Shard].maxClientSeq[args.ID] = args.Seq
+		}
+	default:
+		break
+	}
+	kv.lastApply++
+}
+
+func (kv *ShardKV) Wait(seq int) Op {
+	sleepTime := 10 * time.Microsecond
 	for {
-		status, op := kv.px.Status(kv.seq)
-		DPrintf("me=%v, status=%v, op=%v, seq=%v, gid=%v", kv.me, status, op, kv.seq, kv.gid)
-		if status == paxos.Decided {
-
-			op := op.(Op)
-			DPrintf("done: me=%v, status=%v, op=%v, seq=%v, gid=%v", kv.me, status, op, kv.seq, kv.gid)
-
-			if xop.OpID == op.OpID {
-				break
-			} else if op.Operation == "Put" || op.Operation == "Append" {
-				kv.doPutAppend(op.Operation, op.Key, op.Value, op.OpID)
-			} else if op.Operation == "Reconfigure" {
-				extra := op.Extra.(ShardData)
-				//DPrintf("reconf: %v, %v, %v", kv.me, extra, kv.seq)
-				kv.doReconfigure(&extra)
-				//DPrintf("done reconf: %v, %v, %v", kv.me, extra, kv.seq)
-			}
-			kv.seq += 1
-			doing = false
-		} else {
-			if !doing {
-				kv.px.Start(kv.seq, xop)
-				doing = true
-			}
-			time.Sleep(to)
-			to += 10 * time.Millisecond
+		decided, value := kv.px.Status(seq)
+		if decided == paxos.Decided {
+			return value.(Op)
+		}
+		time.Sleep(sleepTime)
+		if sleepTime < 10*time.Second {
+			sleepTime *= 2
 		}
 	}
-
-	kv.px.Done(kv.seq)
-	kv.seq += 1
 }
 
-// added by Adrian
-func (kv *ShardKV) doGet(Key string) (string, bool) {
-
-
-	db := kv.datastore.Db[key2shard(Key)]
-	val, ok := db[Key]
-	if !ok {
-		return "", false
-	} else {
-		return val, true
+func (kv *ShardKV) Propose(op Op) {
+	for seq := kv.lastApply + 1; ; seq++ {
+		kv.px.Start(seq, op)
+		value := kv.Wait(seq)
+		if seq > kv.lastApply {
+			kv.Apply(value)
+		}
+		if reflect.DeepEqual(value, op) {
+			break
+		}
 	}
+	kv.px.Done(kv.lastApply)
 }
 
 func (kv *ShardKV) Get(args *GetArgs, reply *GetReply) error {
-	// Your code here.
 	kv.mu.Lock()
 	defer kv.mu.Unlock()
-	if kv.config.Shards[key2shard(args.Key)] != kv.gid {
+	if kv.config.Num != args.ConfigNum {
 		reply.Err = ErrWrongGroup
-		//DPrintf("wrong group")
 		return nil
 	}
-	//DPrintf("start Get %v", kv.me)
-	op := Op{nrand(), "Get", args.Key, "", nil}
-	kv.SyncUp(op)
-	reply.Value, _ = kv.doGet(args.Key)
-	reply.Err = OK
-	//DPrintf("end Get %v", kv.me)
+	if args.Seq > kv.shardState[args.Shard].maxClientSeq[args.ID] {
+		op := Op{Operation: "Get", Value: *args}
+		kv.Propose(op)
+	}
+	value, ok := kv.shardState[args.Shard].database[args.Key]
+	if !ok {
+		reply.Err = ErrNoKey
+		reply.Value = "NO KEY"
+	} else {
+		reply.Value = value
+		reply.Err = OK
+	}
 	return nil
 }
-// added by Adrian
-func (kv *ShardKV) doPutAppend(Operation string, Key string, Value string, hash int64) {
 
-
-
-	db := kv.datastore.Db[key2shard(Key)]
-	h := kv.datastore.Hash[key2shard(Key)]
-
-	val, ok := db[Key]
-	if !ok { // if not exists
-		db[Key] = Value
-	} else { // load
-		if Operation == "Put" {
-			db[Key] = Value
-		} else if Operation == "Append" {
-			_, ok := h[hash]
-			if !ok {
-				db[Key] = val + Value
-			}
-		}
-	}
-	h[hash] = 1
-}
 // RPC handler for client Put and Append requests
 func (kv *ShardKV) PutAppend(args *PutAppendArgs, reply *PutAppendReply) error {
-	// Your code here.
+	// log.Printf("config num %v, args %v", kv.config.Num, *args)
 	kv.mu.Lock()
 	defer kv.mu.Unlock()
-	if kv.config.Shards[key2shard(args.Key)] != kv.gid {
+	if kv.config.Num != args.ConfigNum {
 		reply.Err = ErrWrongGroup
 		return nil
 	}
-
-	op := Op{nrand(), args.Op, args.Key, args.Value, nil}
-	kv.SyncUp(op)
-	kv.doPutAppend(args.Op, args.Key, args.Value, op.OpID)
+	if args.Seq <= kv.shardState[args.Shard].maxClientSeq[args.ID] {
+		reply.Err = OK
+		return nil
+	}
+	op := Op{Operation: args.Op, Value: *args}
+	kv.Propose(op)
 	reply.Err = OK
 	return nil
 }
 
-func (kv *ShardKV) doReconfigure(shardData *ShardData) {
-
-	for k, v := range shardData.Db {
-		kv.datastore.Db[shardData.ShardNum][k] = v
-	}
-	for k, v := range shardData.Hash {
-		kv.datastore.Hash[shardData.ShardNum][k] = v
-	}
-}
-
-func (kv *ShardKV) Reconfigure(args *ReconfigureArgs, reply *ReconfigureReply) error {
-
+func (kv *ShardKV) Update(args *UpdateArgs, reply *UpdateReply) error {
 	kv.mu.Lock()
 	defer kv.mu.Unlock()
 
-	op := Op{nrand(), "Sync", "", "", nil}
-	kv.SyncUp(op)
+	//log.Printf("args %v", *args)
 
-	var db = make(map[string]string)
-	var hash = make(map[int64]int)
-	for k, v := range kv.datastore.Db[args.ShardNum] {
-		db[k] = v
+	if args.Seq <= kv.shardState[args.Shard].maxClientSeq[args.ID] {
+		reply.Err = OK
+		return nil
 	}
-	for k, v := range kv.datastore.Hash[args.ShardNum] {
-		hash[k] = v
+	if kv.config.Num != args.ConfigNum {
+		reply.Err = ErrWrongGroup
+		return nil
 	}
-
+	op := Op{Operation: "Update", Value: *args}
+	kv.Propose(op)
 	reply.Err = OK
-	reply.Database = db
-	reply.HashVal = hash
 	return nil
 }
 
-func (kv *ShardKV) checkShard(config shardmaster.Config) bool {
+func (kv *ShardKV) Send(shard int, newConfig shardmaster.Config) {
 
-	DPrintf("start: me=%v, shards=%v, gid=%v", kv.me, kv.config.Shards, kv.gid)
+	args := &UpdateArgs{
+		Shard:        shard,
+		ID:           kv.gid,
+		Seq:          kv.config.Num,
+		ConfigNum:    kv.config.Num,
+		Database:     kv.shardState[shard].database,
+		MaxClientSeq: kv.shardState[shard].maxClientSeq}
+	reply := UpdateReply{}
 
-	for i, oldGid := range kv.config.Shards {
-		newGid := config.Shards[i]
+	gid := newConfig.Shards[shard]
+	servers, ok := newConfig.Groups[gid]
+	for {
 
-		if oldGid != 0 && oldGid != kv.gid && newGid == kv.gid {
-			DPrintf("me: %v. change shard %v -> %v (is now mine), shard: %v. gid: %v", kv.me, oldGid, newGid, i, kv.gid)
-			for _, srv := range kv.config.Groups[oldGid] {
-
-				args := &ReconfigureArgs{ShardNum: i}
-				var reply = ReconfigureReply{}
-				ok := call(srv, "ShardKV.Reconfigure", args, &reply)
-				if ok && reply.Err == OK {
-					shardData := ShardData{reply.Database, reply.HashVal, args.ShardNum}
-
-					op := Op{nrand(), "Reconfigure", "", "", shardData}
-					kv.SyncUp(op)
-					kv.doReconfigure(&shardData)
-					break
+		if ok {
+			for _, srv := range servers {
+				log.Printf("Send shard %d to gid %d, srv %v, args %v", shard, gid, srv, args)
+				ok := call(srv, "ShardKV.Update", args, &reply)
+				if ok && (reply.Err == OK || reply.Err == ErrNoKey) {
+					log.Printf("Success: shard %d to gid %d, srv %v, args %v", shard, gid, srv, args)
+					return
+				}
+				if ok && reply.Err == ErrWrongGroup {
+					log.Printf("Err group: shard %d to gid %d, srv %v, args %v", shard, gid, srv, args)
+					continue
 				}
 			}
 		}
+		time.Sleep(100 * time.Millisecond)
 	}
-	DPrintf("end: me=%v, shards=%v, gid=%v", kv.me, kv.config.Shards, kv.gid)
-	return true
 }
 
 //
@@ -240,25 +240,58 @@ func (kv *ShardKV) checkShard(config shardmaster.Config) bool {
 // if so, re-configure.
 //
 func (kv *ShardKV) tick() {
-
 	kv.mu.Lock()
 	defer kv.mu.Unlock()
+	newConfig := kv.sm.Query(kv.config.Num + 1)
 
-	op := Op{nrand(), "Tick", "", "", nil}
-	kv.SyncUp(op)
+	if newConfig.Num != kv.config.Num {
+		isProducer := false
+		isConsumer := false
 
-	config := kv.sm.Query(-1)
-	kv.checkShard(config)
+		for shard := 0; shard < shardmaster.NShards; shard++ {
+			if kv.config.Shards[shard] == kv.gid && newConfig.Shards[shard] != kv.gid {
+				isProducer = true
+			}
+			if kv.config.Shards[shard] != 0 &&
+				kv.config.Shards[shard] != kv.gid && newConfig.Shards[shard] == kv.gid {
+				isConsumer = true
+			}
+		}
+		op := Op{Operation: "Get"}
 
-	kv.config.Num = config.Num
-	group := make(map[int64][]string)
-	for k, v := range config.Groups {
-		group[k] = v
-	}
-	kv.config.Groups = group
+		if isProducer {
+			kv.Propose(op)
+			for shard := 0; shard < shardmaster.NShards; shard++ {
+				if kv.config.Shards[shard] == kv.gid && newConfig.Shards[shard] != kv.gid {
+					kv.Send(shard, newConfig)
+				}
+			}
+		}
+		if isConsumer {
+			kv.Propose(op)
+			allRecieved := true
+			for shard := 0; shard < shardmaster.NShards; shard++ {
+				if kv.config.Shards[shard] != 0 && kv.config.Shards[shard] != kv.gid && newConfig.Shards[shard] == kv.gid {
+					if !kv.isRecieved[shard] {
+						allRecieved = false
+						log.Printf("gid %v, me %v, shard %v not recieved, Config %v", kv.gid, kv.me, shard, kv.config.Num)
+						break
+					}
+				}
+			}
+			if !allRecieved {
+				return
+			}
+		}
 
-	for i, v := range config.Shards {
-		kv.config.Shards[i] = v
+		log.Printf("gid %d, me %d Config promote %v -> %v", kv.gid, kv.me, kv.config.Num, newConfig.Num)
+		for shard := 0; shard < shardmaster.NShards; shard++ {
+			if kv.config.Shards[shard] == kv.gid && newConfig.Shards[shard] != kv.gid {
+				kv.shardState[shard] = MakeShardState()
+			}
+		}
+		kv.config = newConfig
+		kv.isRecieved = make(map[int]bool)
 	}
 }
 
@@ -300,26 +333,27 @@ func (kv *ShardKV) isunreliable() bool {
 func StartServer(gid int64, shardmasters []string,
 	servers []string, me int) *ShardKV {
 	gob.Register(Op{})
-	gob.Register(ShardData{})
-	gob.Register(DataStore{})
+	gob.Register(PutAppendArgs{})
+	gob.Register(UpdateArgs{})
+	gob.Register(GetArgs{})
 
 	kv := new(ShardKV)
 	kv.me = me
 	kv.gid = gid
 	kv.sm = shardmaster.MakeClerk(shardmasters)
+	kv.config = shardmaster.Config{Num: 0, Groups: map[int64][]string{}}
+	kv.shardState = make(map[int]*ShardState)
+	for shard := 0; shard < shardmaster.NShards; shard++ {
+		kv.shardState[shard] = MakeShardState()
+	}
 
 	// Your initialization code here.
 	// Don't call Join().
-	for i, _ := range kv.datastore.Db {
-		kv.datastore.Db[i] = make(map[string]string)
-		kv.datastore.Hash[i] = make(map[int64]int)
-	}
 
 	rpcs := rpc.NewServer()
 	rpcs.Register(kv)
 
 	kv.px = paxos.Make(servers, me, rpcs)
-
 
 	os.Remove(servers[me])
 	l, e := net.Listen("unix", servers[me])

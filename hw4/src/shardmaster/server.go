@@ -1,7 +1,9 @@
 package shardmaster
 
 import (
+	"errors"
 	"net"
+	"reflect"
 	"time"
 )
 import "fmt"
@@ -24,210 +26,234 @@ type ShardMaster struct {
 	unreliable int32 // for testing
 	px         *paxos.Paxos
 
-	configs [] Config // indexed by config num
+	configs []Config // indexed by config num
+	lastApply  int
 }
 
-func nrand() int64 {
-	bigx := rand.Int63()
-	return bigx
-}
+
+const (
+	Join = "Join"
+	Leave = "Leave"
+	Move = "Move"
+	Query = "Query"
+)
 
 type Op struct {
 	// Your data here.
-	HashID       int64
-	Operation    string // Join, Leave, Move, Query
-	GID          int64
-	Servers      [] string
-	ShardNum     int
+	Operation string
+	Args interface{}
 }
 
-func (sm *ShardMaster) Tail() Config {
-	return sm.configs[len(sm.configs) - 1]
+func (sm *ShardMaster) Rebalance(config *Config, deleteGID int64) {
+	nGroup := len(config.Groups)
+	limit := NShards / nGroup
+
+	for i := 0; i < NShards; i++ {
+		if config.Shards[i] == deleteGID {
+			// let's say we want to delete gid = 101
+			// and Shards is now [101, 101, 100, 101, 102, ...]
+			// then it becomes [0, 0, 100, 0, 102, ...]
+			config.Shards[i] = 0
+		}
+	}
+	gidCounts := make(map[int64]int)
+	for i := 0; i < NShards; i++ {
+		// occurrences of gids in these 10 shards
+
+		// ps. the DELETED gid will also has a gidCounts
+		// and our goal is just making it decrease to 0 (all distributed)
+		gidCounts[config.Shards[i]] += 1
+	}
+
+	for i := 0; i < NShards; i++ {
+		gid := config.Shards[i]
+		// if `i`th shard's group is now deleted
+		// OR if `i`th shard's group need to manage too many shards
+		// -> find someone to replace it and to take care of `i`th shard
+		// how do we find who is the best choice?
+		if gid == 0 || gidCounts[gid] > limit {
+
+			// bestGid is the best replacement gid that we could find now
+			bestGid := int64(-1) // init value
+			// minGidCount is the # of shards that the group `bestGid`
+			// is taking care of.
+			// e.g., [0, 0, 0, 101, 101, 102, 101, 0, 102, 101]
+			// then bestGid = 102 as its minGidCount = 2
+			// in contrast, gid 101 is not the best as it is already
+			// taking care of 4 shards
+			minGidCount := -1 // init value
+
+			// enumerate all existing groups
+			for currGid, _ := range config.Groups {
+				// if init OR
+				// group `currGid` is taking care of less # of shards
+				// compared to minGidCount
+				// update our best choice Gid (the one will MINIMUM count)
+				if bestGid == -1 || gidCounts[currGid] < minGidCount {
+					bestGid = currGid
+					minGidCount = gidCounts[currGid]
+				}
+			}
+			// if the current gid on shard `i` is deleted
+			// we MUST need to give it a new gid
+			// and so new the deleted group's gidCount will -= 1
+			// and the replacement group will += 1
+			if gid == 0 {
+				gidCounts[gid] -= 1
+				gidCounts[bestGid] += 1
+				config.Shards[i] = bestGid
+			} else {
+				// if the current gid is not the deleted one
+				// i.e., it is just `gid` group taking care of too many shards
+				// then we should reduce its burden. But NOT all the time. When?
+
+				// only if our replacement could be meaningful
+				// e.g. [100, 100, 100, 100, 101, 101, 101, 102, 102, 102]
+				// for gid = 100, it has now gidCount = 4
+				// and for gid = 101, it has now gidCount = 3
+				// then if we make gidCount[100] -= 1 and gidCount[101] += 1
+				// they will be 3 and 4 respectively...it does not help at all
+				// e.g. [100, 100, 100, 101, 101, 101, 101, 102, 102, 102]
+				// so we will prefer doing nothing
+				if gidCounts[gid] - gidCounts[bestGid] > 1 {
+					gidCounts[gid] -= 1
+					gidCounts[bestGid] += 1
+					config.Shards[i] = bestGid
+				} else {
+					// do nothing
+				}
+			}
+		}
+	}
 }
 
-// created by Adrian
-func (sm *ShardMaster) SyncUp(xop Op) {
+func (sm *ShardMaster) Apply(op Op) {
+	lastConfig := sm.configs[sm.lastApply]
+	var newConfig Config
+	newConfig.Num = lastConfig.Num
+	newConfig.Groups = make(map[int64][]string)
+	for k, v := range lastConfig.Groups {
+		newConfig.Groups[k] = v
+	}
+	for i := 0; i < NShards; i++ {
+		newConfig.Shards[i] = lastConfig.Shards[i]
+	}
 
-	to := 10 * time.Millisecond
-	doing := false
+	if op.Operation == Join {
+		joinArgs := op.Args.(JoinArgs)
+		newConfig.Groups[joinArgs.GID] = joinArgs.Servers
+		newConfig.Num += 1
+		sm.Rebalance(&newConfig, 0)
+	} else if op.Operation == Leave {
+		leaveArgs := op.Args.(LeaveArgs)
+		delete(newConfig.Groups, leaveArgs.GID)
+		newConfig.Num += 1
+		sm.Rebalance(&newConfig, leaveArgs.GID)
+	} else if op.Operation == Move {
+		moveArgs := op.Args.(MoveArgs)
+		newConfig.Shards[moveArgs.Shard] = moveArgs.GID
+		newConfig.Num += 1
+	} else if op.Operation == Query {
+		sm.px.Done(sm.lastApply)
+	}
+
+	sm.configs = append(sm.configs, newConfig)
+}
+
+func (sm *ShardMaster) Wait(seq int) (Op, error) {
+	sleepTime := 10 * time.Microsecond
+	for iters := 0; iters < 15; iters ++ {
+		decided, op := sm.px.Status(seq)
+		if decided == paxos.Decided {
+			return op.(Op), nil
+		}
+		time.Sleep(sleepTime)
+		if sleepTime < 10 * time.Second {
+			sleepTime *= 2
+		}
+	}
+	return Op{}, errors.New("Wait for too long")
+}
+
+func (sm *ShardMaster) Propose(xop Op) error {
+	seq := sm.lastApply + 1
 	for {
-		status, op := sm.px.Status(sm.Tail().Num)
-		if status == paxos.Decided {
-
-			op := op.(Op)
-			if op.HashID == xop.HashID {
-				break
-			} else if op.Operation == "Join" {
-				sm.join(op)
-			} else if op.Operation == "Leave" {
-				sm.leave(op)
-			} else if op.Operation == "Move" {
-				sm.move(op)
-			} else if op.Operation == "Query" {
-				sm.query(op)
-			}
-			doing = false
-		} else {
-			if !doing {
-				sm.px.Start(sm.Tail().Num, xop)
-				doing = true
-			}
-			time.Sleep(to)
-			to += 10 * time.Millisecond
+		sm.px.Start(seq, xop)
+		op, err := sm.Wait(seq)
+		if err != nil {
+			return err
 		}
-	}
-	sm.px.Done(sm.Tail().Num)
-}
-
-func (sm *ShardMaster) join(op Op) {
-
-	groups := sm.Tail().Groups
-	num := sm.Tail().Num
-	shards := sm.Tail().Shards
-
-	newGroups := make(map[int64][]string)
-	for k,v := range groups {
-		newGroups[k] = v
-	}
-	newGroups[op.GID] = op.Servers
-
-	var avg = NShards / len(newGroups)
-	counter := map[int64]int{}
-	for i, sh := range shards {
-		if sh == 0 {
-			shards[i] = op.GID
-			counter[op.GID] += 1
-		} else {
-			counter[sh] += 1
-			if counter[sh] > avg {
-				shards[i] = op.GID
-				counter[op.GID] += 1
-			}
+		sm.Apply(op)
+		sm.lastApply += 1
+		if reflect.DeepEqual(op, xop) {
+			break
 		}
+		seq += 1
 	}
-
-	num += 1
-	sm.configs = append(sm.configs, Config{num,shards, newGroups})
+	return nil
 }
 
 func (sm *ShardMaster) Join(args *JoinArgs, reply *JoinReply) error {
 	// Your code here.
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
-
-	op := Op{nrand(), "Join",args.GID, args.Servers, -1}
-	sm.SyncUp(op)
-	if _, ok := sm.Tail().Groups[args.GID]; ok {
-		//log.Printf("failed %v join %v, %v", sm.me, len(sm.Tail().Groups), args.GID)
-		return nil
+	op := Op{Args: *args, Operation: Join}
+	err := sm.Propose(op)
+	if err != nil {
+		return err
 	}
-	sm.join(op)
-	//log.Printf("%v join %v, %v", sm.me, len(sm.Tail().Groups), args.GID)
 	return nil
 }
 
-func (sm *ShardMaster) leave(op Op) {
-
-	groups := sm.Tail().Groups
-	num := sm.Tail().Num
-	shards := sm.Tail().Shards
-	newGroups := make(map[int64][]string)
-
-	for k, v := range groups {
-		if k == op.GID {
-			// ignore this.
-		} else {
-			newGroups[k] = v
-		}
-	}
-
-	var i = 0
-	var done = false
-	for done == false {
-		for k, _ := range newGroups {
-
-			shards[i] = k
-			i += 1
-			if i == NShards {
-				done = true
-				break
-			}
-		}
-	}
-
-	num += 1
-	sm.configs = append(sm.configs, Config{num,shards, newGroups})
-}
 func (sm *ShardMaster) Leave(args *LeaveArgs, reply *LeaveReply) error {
-	// Your code here.
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
-
-	op := Op{nrand(), "Leave",args.GID, nil, -1}
-	sm.SyncUp(op)
-	if _, ok := sm.Tail().Groups[args.GID]; !ok {
-		//log.Printf("failed to leave: %v, %v", len(sm.Tail().Groups), args.GID)
-		return nil
+	op := Op{Args: *args, Operation: Leave}
+	err := sm.Propose(op)
+	if err != nil {
+		return err
 	}
-	sm.leave(op)
-	//log.Printf("%v leave %v, %v", sm.me, len(sm.Tail().Groups), args.GID)
 	return nil
-}
-
-func (sm *ShardMaster) move(op Op) {
-	groups := sm.Tail().Groups
-	num := sm.Tail().Num
-	shards := sm.Tail().Shards
-	newGroups := make(map[int64][]string)
-
-	for k, v := range groups {
-		newGroups[k] = v
-	}
-
-	shards[op.ShardNum] = op.GID
-	num += 1
-	sm.configs = append(sm.configs, Config{num,shards, newGroups})
 }
 
 func (sm *ShardMaster) Move(args *MoveArgs, reply *MoveReply) error {
-	// Your code here.
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
-
-	op := Op{nrand(), "Move",args.GID, nil, args.Shard}
-	sm.SyncUp(op)
-	if _, ok := sm.Tail().Groups[args.GID]; !ok {
-		return nil
+	op := Op{Args: *args, Operation: Move}
+	err := sm.Propose(op)
+	if err != nil {
+		return err
 	}
-	sm.move(op)
 	return nil
 }
-func (sm *ShardMaster) query(op Op) { // just like Get()
-	groups := sm.Tail().Groups
-	num := sm.Tail().Num
-	shards := sm.Tail().Shards
-	newGroups := make(map[int64][]string)
 
-	for k, v := range groups {
-		newGroups[k] = v
-	}
-	num += 1
-	sm.configs = append(sm.configs, Config{num,shards, newGroups})
-}
 func (sm *ShardMaster) Query(args *QueryArgs, reply *QueryReply) error {
 	// Your code here.
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
 
-	op := Op{nrand(), "Query",-1, nil, -1}
-	sm.SyncUp(op)
-	sm.query(op)
-
-	if args.Num == -1 || args.Num > sm.Tail().Num {
-		reply.Config = sm.Tail()
-	} else {
-		reply.Config = sm.configs[args.Num]
+	op := Op{Args: *args, Operation: Query}
+	err := sm.Propose(op)
+	if err != nil {
+		return err
 	}
+
+	// config.Num is not necessarily equal to its index in sm.configs
+	// e.g., sm.configs[1203].Num -> this value could be != 1203
+	// e.g., sm.configs[6].Num = 3, sm.configs[16].Num = 5
+	// why? since that WE ONLY add Num when Join/Leave/Move
+	// but we don't add Num when doing Query
+	// however, sm.configs will be appended even if it was Query
+	// thus, len of configs grows FASTER than Num
+	for i := 0; i < sm.lastApply; i++ {
+		if sm.configs[i].Num == args.Num {
+			reply.Config = sm.configs[i]
+			//log.Printf("i=%v, num=%v", i, args.Num)
+			return nil
+		}
+	}
+	// args.Num == -1 OR args.Num is larger than any other Num in configs
+	reply.Config = sm.configs[sm.lastApply]
 	return nil
 }
 
@@ -263,11 +289,18 @@ func (sm *ShardMaster) isunreliable() bool {
 // me is the index of the current server in servers[].
 //
 func StartServer(servers []string, me int) *ShardMaster {
+	gob.Register(Op{})
+	gob.Register(JoinArgs{})
+	gob.Register(LeaveArgs{})
+	gob.Register(MoveArgs{})
+	gob.Register(QueryArgs{})
+
 	sm := new(ShardMaster)
 	sm.me = me
 
-	sm.configs = make([]Config, 1) // len = 1
-	sm.configs[0].Groups = make(map[int64][]string)
+	sm.configs = make([]Config, 1)
+	sm.configs[0].Groups = map[int64][]string{}
+
 	rpcs := rpc.NewServer()
 
 	gob.Register(Op{})
