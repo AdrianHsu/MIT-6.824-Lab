@@ -45,6 +45,7 @@ const (
 	Append = "Append"
 	Get = "Get"
 	Update = "Update"
+	Reconfigure = "Reconfigure"
 )
 
 type ShardKV struct {
@@ -74,13 +75,11 @@ func (kv *ShardKV) Apply(op Op) {
 
 	log.Printf("Apply %v, gid %v, me %v", op, kv.gid, kv.me)
 	if op.Operation == Get {
-		if op.Value != nil {
-			args := op.Value.(GetArgs)
-			log.Printf("Get %v, %v", args.Key, kv.shardState[args.Shard].database[args.Key])
+		args := op.Value.(GetArgs)
+		log.Printf("Get %v, %v", args.Key, kv.shardState[args.Shard].database[args.Key])
 
-			if args.Seq > kv.shardState[args.Shard].maxClientSeq[args.ID] {
-				kv.shardState[args.Shard].maxClientSeq[args.ID] = args.Seq
-			}
+		if args.Seq > kv.shardState[args.Shard].maxClientSeq[args.ID] {
+			kv.shardState[args.Shard].maxClientSeq[args.ID] = args.Seq
 		}
 	} else if op.Operation == Put {
 		args := op.Value.(PutAppendArgs)
@@ -117,6 +116,8 @@ func (kv *ShardKV) Apply(op Op) {
 		if reply.Seq > kv.shardState[reply.Shard].maxClientSeq[reply.ID] {
 			kv.shardState[reply.Shard].maxClientSeq[reply.ID] = reply.Seq
 		}
+	} else if op.Operation == Reconfigure {
+		// do nothing
 	}
 }
 
@@ -281,15 +282,13 @@ func (kv *ShardKV) tick() {
 				isConsumer = true
 			}
 		}
-		op := Op{Operation: "Get"}
+		op := Op{Operation: "Reconfigure"}
 		if isProducer {
 			kv.Propose(op)
-		}
-		if isConsumer {
+		} else if isConsumer {
 			kv.Propose(op)
 			for shard := 0; shard < shardmaster.NShards; shard++ {
-				if kv.config.Shards[shard] != 0 && kv.config.Shards[shard] != kv.gid +
-				&& newConfig.Shards[shard] == kv.gid {
+				if kv.config.Shards[shard] != 0 && kv.config.Shards[shard] != kv.gid && newConfig.Shards[shard] == kv.gid {
 					kv.Send(shard)
 				}
 			}
