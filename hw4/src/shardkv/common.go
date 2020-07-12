@@ -13,6 +13,7 @@ const (
 	OK            = "OK"
 	ErrNoKey      = "ErrNoKey"
 	ErrWrongGroup = "ErrWrongGroup"
+	ErrNotReady   = "ErrNotReady"
 )
 
 type Err string
@@ -49,9 +50,6 @@ type GetReply struct {
 }
 
 type UpdateArgs struct {
-	Database     map[string]string
-	MaxClientSeq map[int64]int
-
 	ID           int64
 	Seq          int
 	Shard        int
@@ -59,5 +57,12 @@ type UpdateArgs struct {
 }
 
 type UpdateReply struct {
+	Database     map[string]string
+	MaxClientSeq map[int64]int
+
+	ID           int64
+	Seq          int
+	Shard        int
+
 	Err string
 }
