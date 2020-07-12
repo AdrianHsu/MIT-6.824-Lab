@@ -61,7 +61,6 @@ type ShardKV struct {
 
 	lastApply  int // same idea as shardMaster.lastApply
 	shardState [shardmaster.NShards]*ShardState
-	hasReceived [shardmaster.NShards]bool
 }
 
 func MakeShardState() *ShardState {
@@ -110,8 +109,7 @@ func (kv *ShardKV) Apply(op Op) {
 		reply := op.Value.(UpdateReply)
 		stateMachine := kv.shardState[reply.Shard]
 
-		kv.hasReceived[reply.Shard] = true
-		log.Printf("Update Recieved, config num %v, shard %d, gid %d, me %d, db %v",
+		log.Printf("Update Received, config num %v, shard %d, gid %d, me %d, db %v",
 			kv.config.Num, reply.Shard, kv.gid, kv.me, reply.Database)
 		stateMachine.database = reply.Database
 		stateMachine.maxClientSeq = reply.MaxClientSeq
@@ -289,32 +287,15 @@ func (kv *ShardKV) tick() {
 		}
 		if isConsumer {
 			kv.Propose(op)
-			allReceived := true
 			for shard := 0; shard < shardmaster.NShards; shard++ {
-				if kv.config.Shards[shard] != 0 && kv.config.Shards[shard] != kv.gid && newConfig.Shards[shard] == kv.gid {
+				if kv.config.Shards[shard] != 0 && kv.config.Shards[shard] != kv.gid +
+				&& newConfig.Shards[shard] == kv.gid {
 					kv.Send(shard)
-					if !kv.hasReceived[shard] {
-						allReceived = false
-						log.Printf("gid %v, me %v, shard %v not received, Config %v", kv.gid, kv.me, shard, kv.config.Num)
-						break
-					}
 				}
-			}
-			if !allReceived {
-				log.Printf("not all Received")
-				return
 			}
 		}
 
-		//for shard := 0; shard < shardmaster.NShards; shard++ {
-		//	if kv.config.Shards[shard] == kv.gid && newConfig.Shards[shard] != kv.gid {
-		//		kv.shardState[shard] = MakeShardState()
-		//	}
-		//}
 		kv.config = newConfig
-		for i, _ := range kv.hasReceived {
-			kv.hasReceived[i] = false
-		}
 	}
 }
 
