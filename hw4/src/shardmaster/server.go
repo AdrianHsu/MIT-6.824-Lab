@@ -154,7 +154,7 @@ func (sm *ShardMaster) Apply(op Op) {
 		newConfig.Shards[moveArgs.Shard] = moveArgs.GID
 		newConfig.Num += 1
 	} else if op.Operation == Query {
-		sm.px.Done(sm.lastApply)
+		// do nothin
 	}
 
 	sm.configs = append(sm.configs, newConfig)
@@ -176,8 +176,7 @@ func (sm *ShardMaster) Wait(seq int) (Op, error) {
 }
 
 func (sm *ShardMaster) Propose(xop Op) error {
-	seq := sm.lastApply + 1
-	for {
+	for seq := sm.lastApply + 1; ; seq++ {
 		sm.px.Start(seq, xop)
 		op, err := sm.Wait(seq)
 		if err != nil {
@@ -188,8 +187,8 @@ func (sm *ShardMaster) Propose(xop Op) error {
 		if reflect.DeepEqual(op, xop) {
 			break
 		}
-		seq += 1
 	}
+	sm.px.Done(sm.lastApply)
 	return nil
 }
 

@@ -138,8 +138,7 @@ func (kv *ShardKV) Wait(seq int) (Op, error) {
 }
 
 func (kv *ShardKV) Propose(xop Op) error {
-	seq := kv.lastApply + 1
-	for {
+	for seq := kv.lastApply + 1; ; seq++ {
 		kv.px.Start(seq, xop)
 		op, err := kv.Wait(seq)
 		if err != nil {
@@ -147,11 +146,9 @@ func (kv *ShardKV) Propose(xop Op) error {
 		}
 		kv.Apply(op)
 		kv.lastApply += 1
-
 		if reflect.DeepEqual(op, xop) {
 			break
 		}
-		seq += 1
 	}
 	kv.px.Done(kv.lastApply)
 	return nil

@@ -1,7 +1,9 @@
 package kvpaxos
 
 import (
+	"errors"
 	"net"
+	"reflect"
 	"time"
 )
 import "fmt"
@@ -26,18 +28,16 @@ func DPrintf(format string, a ...interface{}) (n int, err error) {
 }
 
 
-type Op struct {
-	// Your definitions here.
-	// Field names must start with capital letters,
-	// otherwise RPC will break.
+const (
+	Put = "Put"
+	Append = "Append"
+	Get = "Get"
+)
 
-	// OpID is a hash key attached by the client. Each time when client
-	// retried an operation, it will always use a fixed OpID
-	OpID      int64
+type Op struct {
 	// Put, Get, Append
 	Operation string
-	Key       string
-	Value     string
+	Args      interface{}
 }
 
 type KVPaxos struct {
@@ -48,175 +48,117 @@ type KVPaxos struct {
 	unreliable int32 // for testing
 	px         *paxos.Paxos
 
-	// Your definitions here.
-	database   sync.Map
-	// hashVals acts as the state to filter duplicates
-	// if an operation has already been performed on `database`,
-	// it should not be performed again
-	hashVals   sync.Map
-	// each KVPaxos has a seq number recording the current progress.
-	// seq starts from 0 and gradually increase by 1
-	// if seq = 12, it means that the paxos server instances 0 to 11 has all been decided
-	// and also they should have been called Done()
-	seq        int
+	lastApply  int
+	database   map[string]string
+	maxClientSeq  map[int64]int
 }
 
-// added by Adrian
-// when every time clients sends a Get/PutAppend,
-// the first thing our KVPaxos replica do is NOT to perform the Get/PutAppend
-// on Paxos directly; instead, we will first make sure all the previous
-// operations that have been decided by some other majority (exclude me)
-// are successfully fetched into my database. The way we did that is to
-// Start() a new operation with the seq number. And since that n_a, v_a has been
-// decided, as a result we will get the value which all other majority has reached an agreement to.
-func (kv *KVPaxos) SyncUp(xop Op) {
-	to := 10 * time.Millisecond
-	doing := false
-	// sync on all seq number instances that I have not yet recorded
-	// and after they are all done, we perform our own xop by calling Start()
-	for {
-		status, op := kv.px.Status(kv.seq)
-		// DPrintf("server %v, seq %v, status %v", kv.me, kv.seq, status)
-		// KVPaxos servers interact with each other through the Paxos log.
-		if status == paxos.Decided {
-			// this Decided() could be 2 cases.
-			// case 1. this kv.seq instances has been decided by others and thus when I called Start(),
-			// the instance n_a, v_a is taken from some other majority's agreement.
-			// case 2. I am the initiator. No one has reached an agreement (not Decided) on this seq number yet
-			// and thus the xop.OpID == op.OpID
-			op := op.(Op)
 
-			if xop.OpID == op.OpID {
-				// if it was case 2. then we don't do doPutAppend() as we will do it later out of this function
-				break
-			} else if op.Operation == "Put" || op.Operation == "Append" {
-				// if it was case 1, then we have to make compensation.
-				// we have to catch up on some others' progress. so we perform the PutAppend
-				// according to the paxos log we have the consensus on
-				kv.doPutAppend(op.Operation, op.Key, op.Value, op.OpID)
-			} else {
-				// if it was case 1, then even though it is a Get I was previously not aware of,
-				// I still don't need to do anything as it will not affect my `database`
-				//value, _ := kv.doGet(op.Key)
-				//DPrintf("get: %v", value)
-			}
-			// we could do Done() here. but as it checks all seq num from 0 ~ kv.seq.
-			// so we can elegantly do it outside of this for loop for simplicity.
-			// kv.px.Done(kv.seq)
-
-			// once we catched up on this instance, we can finally increase our seq num by 1
-			kv.seq += 1
-			// also we have to set that our Start() is over. We might need to initiate another Start() though
-			doing = false
-		} else {
-			if !doing {
-				// your server should try to assign the next available Paxos instance (sequence number)
-				// to each incoming client RPC. However, some other kvpaxos replica may also be trying
-				// to use that instance for a different client's operation.
-				// e.g., KVPaxos server 1 do Put(1, 15) and server 2 do Put(1, 32). they are both seq=3 now
-				// Acceptor 1: P1 x   A1-15(ok)    P2 A2-32(ok) // p.s., Proposal 22 arrives A1 a bit late
-				// Acceptor 2: P1 P2  A1-15(fail)     A2-32(ok)
-				// Acceptor 3: P1 P2  A1-15(fail)     A2-32(ok)
-				// as a result, Put(1, 32) will be accepted instead of Put(1, 15)(got overrided)
-				// although these 2 servers are both doing this on seq=3
-
-				// Hint: if one of your kvpaxos servers falls behind (i.e. did not participate
-				// in the agreement for some instance), it will later need to find out what (if anything)
-				// was agree to. A reasonable way to to this is to call Start(), which will either
-				// discover the previously agreed-to value, or cause agreement to happen
-
-				// Think about what value would be reasonable to pass to Start() in this situation.
-				// Ans. Just pass in the value we want to agree on previously (the `xop`) as a matter of fact
-				// if the instance on seq = 3 has been Decided, then when we call Start() on the prepare phase
-				// the V_a will definitely be replaced by the V_a that some other majority has agreed to
-				// Let's say srv 0 are not at seq = 3, and it wants to do Put(1, 15)
-				// and yet srv 1, 2, 3 has already reached seq = 8, that is, their seq 3 ~ 7 are all decided
-				// thus, srv 0 will do Start() on seq 3 ~ 7 but the value will got substituded.
-				// and finally the Put(1, 15) will only be accepted when seq = 8.
-				kv.px.Start(kv.seq, xop)
-				//DPrintf("%v: do start for seq: %v, value=%v", kv.me, kv.seq, xop.Value)
-				// now I'm doing Start(). So don't call Start() again on the same seq, same xop.
-				// not until I finished doing this xop will I initiate another Start()
-				doing = true
-			}
-			time.Sleep(to)
-			// your code will need to wait for Paxos instances to complete agreement.
-			// A good plan is to check quickly at first, and then more slowly:
-			to += 10 * time.Millisecond
+func (kv *KVPaxos) Apply(op Op) {
+	if op.Operation == Get {
+		args := op.Args.(GetArgs)
+		if args.Seq > kv.maxClientSeq[args.ClientID] {
+			kv.maxClientSeq[args.ClientID] = args.Seq
+		}
+	} else if op.Operation == Put {
+		args := op.Args.(PutAppendArgs)
+		kv.database[args.Key] = args.Value
+		if args.Seq > kv.maxClientSeq[args.ClientID] {
+			kv.maxClientSeq[args.ClientID] = args.Seq
+		}
+	} else if op.Operation == Append {
+		args := op.Args.(PutAppendArgs)
+		value, ok := kv.database[args.Key]
+		if !ok {
+			value = ""
+		}
+		kv.database[args.Key] = value + args.Value
+		if args.Seq > kv.maxClientSeq[args.ClientID] {
+			kv.maxClientSeq[args.ClientID] = args.Seq
 		}
 	}
-	// don't forget to call the Paxos Done() method when a kvpaxos has processed
-	// an instance and will no longer need it or any previous instance.
-	// When will the px.Forget() to be called? when EVERY KVPaxos call Done() on seq = 3,
-	// then Min() will be 4. -> when doing next Start() (as we are piggybacked() the proposer
-	// will clean up those old instances by calling Forget()
-	kv.px.Done(kv.seq)
-	kv.seq += 1
 }
-// added by Adrian
-func (kv *KVPaxos) doGet(Key string) (string, bool) {
-	val, ok := kv.database.Load(Key)
-	// no effect for Get even the hashVal may has duplicates
-	if !ok {
-		return "", false
-	} else {
-		return val.(string), true
-	}
-}
-// added by Adrian
-func (kv *KVPaxos) doPutAppend(Operation string, Key string, Value string, hash int64) {
-	// first, we check if the key is already exists
-	val, ok := kv.database.Load(Key)
-	if !ok { // if not exists
 
-		// init. are the same for either put / append
-		kv.database.Store(Key, Value)
-
-	} else { // load
-		if Operation == "Put" {
-			kv.database.Store(Key, Value)
-		} else if Operation == "Append" {
-			vals := val.(string)
-			// you will need to uniquely identify client operations
-			// to ensure that they execute just once.
-			_, ok := kv.hashVals.Load(hash)
-			if !ok {
-				// check if the hashVals has been added
-				kv.database.Store(Key, vals+Value)
-			}
+func (kv *KVPaxos) Wait(seq int) (Op, error) {
+	sleepTime := 10 * time.Microsecond
+	for iters := 0; iters < 15; iters ++ {
+		decided, op := kv.px.Status(seq)
+		if decided == paxos.Decided {
+			return op.(Op), nil
+		}
+		// as we correctly do `done()` forgetten one should not be shown
+		//else if decided == paxos.Forgotten {
+		//	break
+		//}
+		time.Sleep(sleepTime)
+		if sleepTime < 10 * time.Second {
+			sleepTime *= 2
 		}
 	}
-	// we have to store this hash whether it is the first time this pair was pushed or not
-	// therefore I put this outside of the if-else branch condition
-	kv.hashVals.Store(hash, 1) // an arbitrary value 1
+	return Op{}, errors.New("Wait for too long")
+}
+
+func (kv *KVPaxos) Propose(xop Op) error {
+	for seq := kv.lastApply + 1; ; seq++ {
+		kv.px.Start(seq, xop)
+		op, err := kv.Wait(seq)
+		if err != nil {
+			return err
+		}
+		kv.Apply(op)
+		kv.lastApply += 1
+
+		if reflect.DeepEqual(op, xop) {
+			break
+		}
+	}
+
+	kv.px.Done(kv.lastApply)
+	return nil
 }
 
 func (kv *KVPaxos) Get(args *GetArgs, reply *GetReply) error {
 	// Your code here.
 	kv.mu.Lock()
 	defer kv.mu.Unlock()
-	// these values in Get Op are basically dummy value,
-	// we will not use them when meeting one of them in SyncUp()
-	op := Op{args.Hash, "Get", args.Key, ""}
-	// a kvpaxos server should not complete a Get() RPC if it is not part of a majority
-	// (so that it does not serve stale data).
-	// -> instead, it will endlessly try syncing and wait for it to be `Decided`
-	kv.SyncUp(op)
-	reply.Value, _ = kv.doGet(args.Key)
+	if args.Seq <= kv.maxClientSeq[args.ClientID]  {
+		reply.Err = OK
+		reply.Value = kv.database[args.Key]
+		return nil
+	}
+	op := Op{Operation: "Get", Args: *args}
+	err := kv.Propose(op)
+	if err != nil {
+		return err
+	}
+
+	value, ok := kv.database[args.Key]
+	if !ok {
+		reply.Err = ErrNoKey
+		reply.Value = ""
+	} else {
+		reply.Err = OK
+		reply.Value = value
+	}
 	return nil
+
 }
 
 func (kv *KVPaxos) PutAppend(args *PutAppendArgs, reply *PutAppendReply) error {
 	// Your code here.
 	kv.mu.Lock()
 	defer kv.mu.Unlock()
-	// It should enter a Get Op in the Paxos log, and then "interpret" the the log **before that point**
-	// to make sure its key/value database reflects all recent Put()s.
-	// ps. An Append Paxos log entry should contain the Append's arguments,
-	// but not the resulting value, since the result might be large.
-	op := Op{args.Hash, args.Op, args.Key, args.Value}
-	kv.SyncUp(op)
-	kv.doPutAppend(args.Op, args.Key, args.Value, args.Hash)
+	if args.Seq <= kv.maxClientSeq[args.ClientID] {
+		reply.Err = OK
+		return nil
+	}
+
+	op := Op{Args: *args, Operation: args.Op}
+	err := kv.Propose(op)
+	if err != nil {
+		return err
+	}
+	reply.Err = OK
 	return nil
 }
 
@@ -257,12 +199,15 @@ func StartServer(servers []string, me int) *KVPaxos {
 	// call gob.Register on structures you want
 	// Go's RPC library to marshall/unmarshall.
 	gob.Register(Op{})
+	gob.Register(GetArgs{})
+	gob.Register(PutAppendArgs{})
 
 	kv := new(KVPaxos)
 	kv.me = me
 
 	// Your initialization code here.
-	kv.seq = 0
+	kv.database = make(map[string]string)
+	kv.maxClientSeq = make(map[int64]int)
 
 	rpcs := rpc.NewServer()
 	rpcs.Register(kv)

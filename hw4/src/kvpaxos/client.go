@@ -12,6 +12,8 @@ import "fmt"
 type Clerk struct {
 	servers []string
 	// You will have to modify this struct.
+	ClientID  int64
+	Seq       int
 }
 
 func nrand() int64 {
@@ -25,6 +27,8 @@ func MakeClerk(servers []string) *Clerk {
 	ck := new(Clerk)
 	ck.servers = servers
 	// You'll have to add code here.
+	ck.ClientID = nrand()
+	ck.Seq = 0
 	return ck
 }
 
@@ -69,14 +73,15 @@ func call(srv string, rpcname string,
 //
 func (ck *Clerk) Get(key string) string {
 	// You will have to modify this function.
-	args := &GetArgs{key, nrand()}
+	ck.Seq += 1
+	args := &GetArgs{Key: key, Op: "Get", Seq: ck.Seq, ClientID: ck.ClientID}
 	reply := &GetReply{}
 
 	var ok = false
 	var i = 0
 	for !ok {
 		ok = call(ck.servers[i], "KVPaxos.Get", args, reply)
-		if ok {
+		if ok && reply.Err == OK {
 			break
 		} else {
 			//log.Printf("Get on server %v fails. change another one", reply.FailSrv)
@@ -93,13 +98,14 @@ func (ck *Clerk) Get(key string) string {
 //
 func (ck *Clerk) PutAppend(key string, value string, op string) {
 	// You will have to modify this function.
-	args := &PutAppendArgs{key, value, op, nrand()}
+	ck.Seq += 1
+	args := &PutAppendArgs{Key: key, Value: value, Op: op, Seq: ck.Seq, ClientID: ck.ClientID}
 	reply := &PutAppendReply{}
 	var ok = false
 	var i = 0
 	for !ok {
 		ok = call(ck.servers[i], "KVPaxos.PutAppend", args, reply)
-		if ok {
+		if ok && reply.Err == OK {
 			break
 		} else {
 			//log.Printf("PutAppend on server %v fails. change another one", reply.FailSrv)
