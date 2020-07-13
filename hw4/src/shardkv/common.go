@@ -50,8 +50,7 @@ type GetReply struct {
 }
 
 type UpdateArgs struct {
-	ID           int64
-	Seq          int
+
 	Shard        int
 	ConfigNum    int
 }
@@ -60,8 +59,7 @@ type UpdateReply struct {
 	Database     map[string]string
 	MaxClientSeq map[int64]int
 
-	ID           int64
-	Seq          int
+
 	Shard        int
 
 	Err string

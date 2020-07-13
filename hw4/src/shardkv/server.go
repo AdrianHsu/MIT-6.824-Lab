@@ -113,9 +113,7 @@ func (kv *ShardKV) Apply(op Op) {
 		stateMachine.database = reply.Database
 		stateMachine.maxClientSeq = reply.MaxClientSeq
 
-		if reply.Seq > kv.shardState[reply.Shard].maxClientSeq[reply.ID] {
-			kv.shardState[reply.Shard].maxClientSeq[reply.ID] = reply.Seq
-		}
+
 	} else if op.Operation == Reconfigure {
 		// do nothing
 	}
@@ -202,12 +200,10 @@ func (kv *ShardKV) PutAppend(args *PutAppendArgs, reply *PutAppendReply) error {
 }
 
 func (kv *ShardKV) Update(args *UpdateArgs, reply *UpdateReply) error {
+
 	kv.mu.Lock()
 	defer kv.mu.Unlock()
-	if args.Seq <= kv.shardState[args.Shard].maxClientSeq[args.ID] {
-		reply.Err = OK
-		return nil
-	}
+
 	if kv.config.Num < args.ConfigNum {
 		reply.Err = ErrNotReady
 		return nil
@@ -221,9 +217,7 @@ func (kv *ShardKV) Update(args *UpdateArgs, reply *UpdateReply) error {
 	for k, v := range kv.shardState[args.Shard].maxClientSeq {
 		reply.MaxClientSeq[k] = v
 	}
-	reply.ID = args.ID
 	reply.Shard = args.Shard
-	reply.Seq = args.Seq
 
 	reply.Err = OK
 	return nil
@@ -233,8 +227,6 @@ func (kv *ShardKV) Send(shard int) {
 
 	args := &UpdateArgs{
 		Shard:        shard,
-		ID:           kv.gid,
-		Seq:          kv.config.Num,
 		ConfigNum:    kv.config.Num}
 
 	gid := kv.config.Shards[shard]
