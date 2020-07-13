@@ -29,10 +29,10 @@ func DPrintf(format string, a ...interface{}) (n int, err error) {
 
 type ShardState struct {
 	// <key, value> pair in this particular shard
-	database     map[string]string
+	Database     map[string]string
 	// the max seq that ShardKV has seen from this client
 	// <clientID, seq number>
-	maxClientSeq map[int64]int
+	MaxClientSeq map[int64]int
 }
 
 type Op struct {
@@ -64,11 +64,22 @@ type ShardKV struct {
 	shardState [shardmaster.NShards]*ShardState
 }
 
+func (ss *ShardState) Init() {
+	ss.Database = make(map[string]string)
+	ss.MaxClientSeq = make(map[int64]int)
+}
+func (ss *ShardState) Update(other *ShardState) {
+	for k, v := range other.Database {
+		ss.Database[k] = v
+	}
+	for k, v := range other.MaxClientSeq {
+		ss.MaxClientSeq[k] = v
+	}
+}
 func MakeShardState() *ShardState {
-	shardState := &ShardState{}
-	shardState.database = make(map[string]string)
-	shardState.maxClientSeq = make(map[int64]int)
-	return shardState
+	var shardState ShardState
+	shardState.Init()
+	return &shardState
 }
 
 func (kv *ShardKV) Apply(op Op) {
@@ -76,43 +87,41 @@ func (kv *ShardKV) Apply(op Op) {
 	log.Printf("Apply %v, gid %v, me %v", op, kv.gid, kv.me)
 	if op.Operation == Get {
 		args := op.Value.(GetArgs)
-		log.Printf("Get %v, %v", args.Key, kv.shardState[args.Shard].database[args.Key])
+		log.Printf("Get %v, %v", args.Key, kv.shardState[args.Shard].Database[args.Key])
 
-		if args.Seq > kv.shardState[args.Shard].maxClientSeq[args.ID] {
-			kv.shardState[args.Shard].maxClientSeq[args.ID] = args.Seq
+		if args.Seq > kv.shardState[args.Shard].MaxClientSeq[args.ID] {
+			kv.shardState[args.Shard].MaxClientSeq[args.ID] = args.Seq
 		}
 	} else if op.Operation == Put {
 		args := op.Value.(PutAppendArgs)
 		stateMachine := kv.shardState[args.Shard]
-		stateMachine.database[args.Key] = args.Value
+		stateMachine.Database[args.Key] = args.Value
 
-		if args.Seq > kv.shardState[args.Shard].maxClientSeq[args.ID] {
-			kv.shardState[args.Shard].maxClientSeq[args.ID] = args.Seq
+		if args.Seq > kv.shardState[args.Shard].MaxClientSeq[args.ID] {
+			kv.shardState[args.Shard].MaxClientSeq[args.ID] = args.Seq
 		}
 	} else if op.Operation == Append {
 		args := op.Value.(PutAppendArgs)
 		stateMachine := kv.shardState[args.Shard]
 
-		value, ok := stateMachine.database[args.Key]
+		value, ok := stateMachine.Database[args.Key]
 		if !ok {
 			value = ""
 		}
-		stateMachine.database[args.Key] = value + args.Value
+		stateMachine.Database[args.Key] = value + args.Value
 
-		log.Printf("After append, %v", kv.shardState[args.Shard].database[args.Key])
+		log.Printf("After append, %v", kv.shardState[args.Shard].Database[args.Key])
 
-		if args.Seq > kv.shardState[args.Shard].maxClientSeq[args.ID] {
-			kv.shardState[args.Shard].maxClientSeq[args.ID] = args.Seq
+		if args.Seq > kv.shardState[args.Shard].MaxClientSeq[args.ID] {
+			kv.shardState[args.Shard].MaxClientSeq[args.ID] = args.Seq
 		}
 	} else if op.Operation == Update {
 		reply := op.Value.(UpdateReply)
 		stateMachine := kv.shardState[reply.Shard]
 
 		log.Printf("Update Received, config num %v, shard %d, gid %d, me %d, db %v",
-			kv.config.Num, reply.Shard, kv.gid, kv.me, reply.Database)
-		stateMachine.database = reply.Database
-		stateMachine.maxClientSeq = reply.MaxClientSeq
-
+			kv.config.Num, reply.Shard, kv.gid, kv.me, reply.ShardState.Database)
+		stateMachine.Update(&reply.ShardState)
 
 	} else if op.Operation == Reconfigure {
 		// do nothing
@@ -136,9 +145,9 @@ func (kv *ShardKV) Wait(seq int) (Op, error) {
 }
 
 func (kv *ShardKV) Propose(xop Op) error {
-	for seq := kv.lastApply + 1; ; seq++ {
-		kv.px.Start(seq, xop)
-		op, err := kv.Wait(seq)
+	for  {
+		kv.px.Start(kv.lastApply + 1, xop)
+		op, err := kv.Wait(kv.lastApply + 1)
 		if err != nil {
 			return err
 		}
@@ -159,17 +168,21 @@ func (kv *ShardKV) Get(args *GetArgs, reply *GetReply) error {
 		reply.Err = ErrWrongGroup
 		return nil
 	}
-	if args.Seq > kv.shardState[args.Shard].maxClientSeq[args.ID] {
-		op := Op{Operation: "Get", Value: *args}
-		err := kv.Propose(op)
-		if err != nil {
-			return err
-		}
+	if args.Seq <= kv.shardState[args.Shard].MaxClientSeq[args.ID] {
+		reply.Err = OK
+		reply.Value = kv.shardState[args.Shard].Database[args.Key]
+		return nil
 	}
-	value, ok := kv.shardState[args.Shard].database[args.Key]
+
+	op := Op{Operation: "Get", Value: *args}
+	err := kv.Propose(op)
+	if err != nil {
+		return err
+	}
+	value, ok := kv.shardState[args.Shard].Database[args.Key]
 	if !ok {
 		reply.Err = ErrNoKey
-		reply.Value = "NO KEY"
+		reply.Value = ""
 	} else {
 		reply.Value = value
 		reply.Err = OK
@@ -186,7 +199,7 @@ func (kv *ShardKV) PutAppend(args *PutAppendArgs, reply *PutAppendReply) error {
 		reply.Err = ErrWrongGroup
 		return nil
 	}
-	if args.Seq <= kv.shardState[args.Shard].maxClientSeq[args.ID] {
+	if args.Seq <= kv.shardState[args.Shard].MaxClientSeq[args.ID] {
 		reply.Err = OK
 		return nil
 	}
@@ -208,17 +221,14 @@ func (kv *ShardKV) Update(args *UpdateArgs, reply *UpdateReply) error {
 		reply.Err = ErrNotReady
 		return nil
 	}
-
-	reply.Database = make(map[string]string)
-	reply.MaxClientSeq = make(map[int64]int)
-	for k, v := range kv.shardState[args.Shard].database {
-		reply.Database[k] = v
+	reply.ShardState.Init()
+	for k, v := range kv.shardState[args.Shard].Database {
+		reply.ShardState.Database[k] = v
 	}
-	for k, v := range kv.shardState[args.Shard].maxClientSeq {
-		reply.MaxClientSeq[k] = v
+	for k, v := range kv.shardState[args.Shard].MaxClientSeq {
+		reply.ShardState.MaxClientSeq[k] = v
 	}
 	reply.Shard = args.Shard
-
 	reply.Err = OK
 	return nil
 }
@@ -235,8 +245,11 @@ func (kv *ShardKV) Send(shard int) {
 		if ok {
 			for _, srv := range servers {
 				var reply UpdateReply
+				newState := MakeShardState()
 				ok := call(srv, "ShardKV.Update", args, &reply)
 				if ok && (reply.Err == OK || reply.Err == ErrNoKey) {
+					newState.Update(&reply.ShardState)
+					reply.ShardState = *newState
 					op := Op{Operation: "Update", Value: reply}
 					kv.Propose(op)
 					return

@@ -176,9 +176,9 @@ func (sm *ShardMaster) Wait(seq int) (Op, error) {
 }
 
 func (sm *ShardMaster) Propose(xop Op) error {
-	for seq := sm.lastApply + 1; ; seq++ {
-		sm.px.Start(seq, xop)
-		op, err := sm.Wait(seq)
+	for {
+		sm.px.Start(sm.lastApply + 1, xop)
+		op, err := sm.Wait(sm.lastApply + 1)
 		if err != nil {
 			return err
 		}

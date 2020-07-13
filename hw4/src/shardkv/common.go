@@ -56,11 +56,8 @@ type UpdateArgs struct {
 }
 
 type UpdateReply struct {
-	Database     map[string]string
-	MaxClientSeq map[int64]int
-
+	ShardState ShardState
 
 	Shard        int
-
 	Err string
 }

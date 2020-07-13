@@ -99,9 +99,9 @@ func (kv *KVPaxos) Wait(seq int) (Op, error) {
 }
 
 func (kv *KVPaxos) Propose(xop Op) error {
-	for seq := kv.lastApply + 1; ; seq++ {
-		kv.px.Start(seq, xop)
-		op, err := kv.Wait(seq)
+	for {
+		kv.px.Start(kv.lastApply + 1, xop)
+		op, err := kv.Wait(kv.lastApply + 1)
 		if err != nil {
 			return err
 		}
@@ -111,8 +111,9 @@ func (kv *KVPaxos) Propose(xop Op) error {
 		if reflect.DeepEqual(op, xop) {
 			break
 		}
+		// do this everytime lastApply +1 -> to prevent any possible mem overflow possibilities
+		kv.px.Done(kv.lastApply)
 	}
-
 	kv.px.Done(kv.lastApply)
 	return nil
 }
