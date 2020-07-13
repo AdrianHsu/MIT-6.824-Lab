@@ -33,6 +33,7 @@ type ShardState struct {
 	// the max seq that ShardKV has seen from this client
 	// <clientID, seq number>
 	MaxClientSeq map[int64]int
+	ProducerGrpConfigNum map[int64]int
 }
 
 type Op struct {
@@ -44,7 +45,7 @@ const (
 	Put = "Put"
 	Append = "Append"
 	Get = "Get"
-	Update = "Update"
+	Bootstrap = "Bootstrap"
 	Reconfigure = "Reconfigure"
 )
 
@@ -67,13 +68,17 @@ type ShardKV struct {
 func (ss *ShardState) Init() {
 	ss.Database = make(map[string]string)
 	ss.MaxClientSeq = make(map[int64]int)
+	ss.ProducerGrpConfigNum = make(map[int64]int)
 }
-func (ss *ShardState) Update(other *ShardState) {
+func (ss *ShardState) Bootstrap(other *ShardState) {
 	for k, v := range other.Database {
 		ss.Database[k] = v
 	}
 	for k, v := range other.MaxClientSeq {
 		ss.MaxClientSeq[k] = v
+	}
+	for k, v := range other.ProducerGrpConfigNum {
+		ss.ProducerGrpConfigNum[k] = v
 	}
 }
 func MakeShardState() *ShardState {
@@ -103,7 +108,6 @@ func (kv *ShardKV) Apply(op Op) {
 	} else if op.Operation == Append {
 		args := op.Value.(PutAppendArgs)
 		stateMachine := kv.shardState[args.Shard]
-
 		value, ok := stateMachine.Database[args.Key]
 		if !ok {
 			value = ""
@@ -111,25 +115,27 @@ func (kv *ShardKV) Apply(op Op) {
 		stateMachine.Database[args.Key] = value + args.Value
 
 		log.Printf("After append, %v", kv.shardState[args.Shard].Database[args.Key])
-
 		if args.Seq > kv.shardState[args.Shard].MaxClientSeq[args.ID] {
 			kv.shardState[args.Shard].MaxClientSeq[args.ID] = args.Seq
 		}
-	} else if op.Operation == Update {
-		reply := op.Value.(UpdateReply)
+	} else if op.Operation == Bootstrap {
+		reply := op.Value.(BootstrapReply)
 		stateMachine := kv.shardState[reply.Shard]
 
-		log.Printf("Update Received, config num %v, shard %d, gid %d, me %d, db %v",
+		log.Printf("Bootstrap Received, config num %v, shard %d, gid %d, me %d, db %v",
 			kv.config.Num, reply.Shard, kv.gid, kv.me, reply.ShardState.Database)
-		stateMachine.Update(&reply.ShardState)
+		stateMachine.Bootstrap(&reply.ShardState)
 
+		if reply.ConfigNum > kv.shardState[reply.Shard].ProducerGrpConfigNum[reply.ProducerGID] {
+			kv.shardState[reply.Shard].ProducerGrpConfigNum[reply.ProducerGID] = reply.ConfigNum
+		}
 	} else if op.Operation == Reconfigure {
 		// do nothing
 	}
 }
 
 func (kv *ShardKV) Wait(seq int) (Op, error) {
-	sleepTime := 10 * time.Microsecond
+	sleepTime := 10 * time.Millisecond
 	for iters := 0; iters < 15; iters++ {
 		decided, value := kv.px.Status(seq)
 		if decided == paxos.Decided {
@@ -140,7 +146,7 @@ func (kv *ShardKV) Wait(seq int) (Op, error) {
 			sleepTime *= 2
 		}
 	}
-	return Op{}, errors.New("Wait for too long")
+	return Op{}, errors.New("ShardKV: Wait for too long")
 
 }
 
@@ -156,18 +162,22 @@ func (kv *ShardKV) Propose(xop Op) error {
 		if reflect.DeepEqual(op, xop) {
 			break
 		}
+		kv.px.Done(kv.lastApply)
 	}
 	kv.px.Done(kv.lastApply)
 	return nil
 }
 
 func (kv *ShardKV) Get(args *GetArgs, reply *GetReply) error {
+
 	kv.mu.Lock()
 	defer kv.mu.Unlock()
+	// if client's config num is not equal to mine -> it means it is sending the wrong group (old one)
 	if kv.config.Num != args.ConfigNum {
 		reply.Err = ErrWrongGroup
 		return nil
 	}
+
 	if args.Seq <= kv.shardState[args.Shard].MaxClientSeq[args.ID] {
 		reply.Err = OK
 		reply.Value = kv.shardState[args.Shard].Database[args.Key]
@@ -187,14 +197,17 @@ func (kv *ShardKV) Get(args *GetArgs, reply *GetReply) error {
 		reply.Value = value
 		reply.Err = OK
 	}
+	log.Printf("Done: Get, config num %v, shard %d, gid %d, me %d",
+		kv.config.Num, args.Shard, kv.gid, kv.me)
 	return nil
 }
 
 // RPC handler for client Put and Append requests
 func (kv *ShardKV) PutAppend(args *PutAppendArgs, reply *PutAppendReply) error {
-	// log.Printf("config num %v, args %v", kv.config.Num, *args)
+
 	kv.mu.Lock()
 	defer kv.mu.Unlock()
+	// log.Printf("config num %v, args %v", kv.config.Num, *args)
 	if kv.config.Num != args.ConfigNum {
 		reply.Err = ErrWrongGroup
 		return nil
@@ -212,15 +225,27 @@ func (kv *ShardKV) PutAppend(args *PutAppendArgs, reply *PutAppendReply) error {
 	return nil
 }
 
-func (kv *ShardKV) Update(args *UpdateArgs, reply *UpdateReply) error {
+func (kv *ShardKV) Bootstrap(args *BootstrapArgs, reply *BootstrapReply) error {
 
+	log.Printf("Bootstrap: config num %v, shard %d, kv.gid %d, me %d",
+		kv.config.Num, args.Shard, kv.gid, kv.me)
 	kv.mu.Lock()
 	defer kv.mu.Unlock()
+	log.Printf("Bootstrap Lock acquired: config num %v, shard %d, kv.gid %d, me %d",
+		kv.config.Num, args.Shard, kv.gid, kv.me)
 
-	if kv.config.Num < args.ConfigNum {
+	if kv.config.Num <= args.ConfigNum {
 		reply.Err = ErrNotReady
+		//log.Printf("ErrNotReady, Producer ConfigNum %v, Consumer ConfigNum %v, kv.gid %d, me %d",
+		//	kv.config.Num, args.ConfigNum, kv.gid, kv.me)
 		return nil
 	}
+
+	// We don't need this proposal! since that we will check config Num if it is the latest one.
+	// and when we were doing that, we also do Reconfigure Proposal -> so it must be the latest version
+	//op := Op{Operation: "Reconfigure"}
+	//kv.Propose(op)
+
 	reply.ShardState.Init()
 	for k, v := range kv.shardState[args.Shard].Database {
 		reply.ShardState.Database[k] = v
@@ -228,39 +253,57 @@ func (kv *ShardKV) Update(args *UpdateArgs, reply *UpdateReply) error {
 	for k, v := range kv.shardState[args.Shard].MaxClientSeq {
 		reply.ShardState.MaxClientSeq[k] = v
 	}
-	reply.Shard = args.Shard
+	for k, v := range kv.shardState[args.Shard].ProducerGrpConfigNum {
+		reply.ShardState.ProducerGrpConfigNum[k] = v
+	}
 	reply.Err = OK
 	return nil
 }
 
-func (kv *ShardKV) Send(shard int) {
+func (kv *ShardKV) Migrate(shard int) {
 
-	args := &UpdateArgs{
+	args := &BootstrapArgs{
 		Shard:        shard,
 		ConfigNum:    kv.config.Num}
 
 	gid := kv.config.Shards[shard]
 	servers, ok := kv.config.Groups[gid]
+	if kv.shardState[shard].ProducerGrpConfigNum[gid] >= kv.config.Num {
+		// Repeated Bootstrap Received, config num 6, shard 9, kv.gid 102, gid 100, me 1
+		// i.e., kv.shardState[shard].MaxClientSeq[gid], gid=100,
+		// is also = 6 but not 5 or less anymore
+		// (since this happened before) Bootstrap Received, config num 6, shard 9, gid 102, me 1
+		log.Printf("Dismissed: Migrate, config num %v, shard %d, kv.gid %d, gid %d, me %d",
+			kv.config.Num, shard, kv.gid, gid, kv.me)
+		return
+	}
+
 	for {
 		if ok {
 			for _, srv := range servers {
-				var reply UpdateReply
+				log.Printf("Try: Migrate, config num %v, shard %d, kv.gid %d, gid %d, me %d, srv %v",
+					kv.config.Num, shard, kv.gid, gid, kv.me, srv)
+
+				var reply BootstrapReply
+				reply.Shard = args.Shard
 				newState := MakeShardState()
-				ok := call(srv, "ShardKV.Update", args, &reply)
-				if ok && (reply.Err == OK || reply.Err == ErrNoKey) {
-					newState.Update(&reply.ShardState)
+				ok := call(srv, "ShardKV.Bootstrap", args, &reply)
+				if ok && (reply.Err == OK || reply.Err == ErrNoKey) { // exclude ErrNotReady -> this is an error
+					newState.Bootstrap(&reply.ShardState)
 					reply.ShardState = *newState
-					op := Op{Operation: "Update", Value: reply}
+					reply.ProducerGID = gid
+					reply.ConfigNum = kv.config.Num
+					op := Op{Operation: "Bootstrap", Value: reply}
 					kv.Propose(op)
+					log.Printf("Done: Migrate, config num %v, shard %d, kv.gid %d, gid %d, me %d, srv %v",
+						kv.config.Num, shard, kv.gid, gid, kv.me, srv)
 					return
-				}
-				if ok && reply.Err == ErrNotReady {
-					continue
 				}
 			}
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
+
 }
 
 //
@@ -273,28 +316,17 @@ func (kv *ShardKV) tick() {
 	newConfig := kv.sm.Query(kv.config.Num + 1)
 
 	if newConfig.Num != kv.config.Num {
-		isConsumer := false
-		isProducer := false
-		for shard := 0; shard < shardmaster.NShards; shard++ {
-			if kv.config.Shards[shard] == kv.gid && newConfig.Shards[shard] != kv.gid {
-				isProducer = true
-			}
-			if kv.config.Shards[shard] != 0 &&
-				kv.config.Shards[shard] != kv.gid && newConfig.Shards[shard] == kv.gid {
-				isConsumer = true
-			}
-		}
 		op := Op{Operation: "Reconfigure"}
-		if isProducer {
-			kv.Propose(op)
-		} else if isConsumer {
-			kv.Propose(op)
-			for shard := 0; shard < shardmaster.NShards; shard++ {
-				if kv.config.Shards[shard] != 0 && kv.config.Shards[shard] != kv.gid && newConfig.Shards[shard] == kv.gid {
-					kv.Send(shard)
-				}
+		kv.Propose(op)
+		for shard := 0; shard < shardmaster.NShards; shard++ {
+			if kv.config.Shards[shard] != 0 && kv.config.Shards[shard] != kv.gid &&
+				newConfig.Shards[shard] == kv.gid {
+				// this ShardKV is the consumer -> ask the producer to migrate its latest ShardState
+				kv.Migrate(shard)
 			}
 		}
+		// otherwise, this ShardKV could be (1) the producer (2) a nobody
+		// we still do reconfigure on that to sync up
 
 		kv.config = newConfig
 	}
@@ -340,7 +372,7 @@ func StartServer(gid int64, shardmasters []string,
 	gob.Register(Op{})
 	gob.Register(PutAppendArgs{})
 	gob.Register(GetArgs{})
-	gob.Register(UpdateReply{})
+	gob.Register(BootstrapReply{})
 
 	kv := new(ShardKV)
 	kv.me = me

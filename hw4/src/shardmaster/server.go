@@ -161,7 +161,7 @@ func (sm *ShardMaster) Apply(op Op) {
 }
 
 func (sm *ShardMaster) Wait(seq int) (Op, error) {
-	sleepTime := 10 * time.Microsecond
+	sleepTime := 10 * time.Millisecond
 	for iters := 0; iters < 15; iters ++ {
 		decided, op := sm.px.Status(seq)
 		if decided == paxos.Decided {
@@ -172,7 +172,7 @@ func (sm *ShardMaster) Wait(seq int) (Op, error) {
 			sleepTime *= 2
 		}
 	}
-	return Op{}, errors.New("Wait for too long")
+	return Op{}, errors.New("ShardMaster: Wait for too long")
 }
 
 func (sm *ShardMaster) Propose(xop Op) error {
@@ -187,6 +187,7 @@ func (sm *ShardMaster) Propose(xop Op) error {
 		if reflect.DeepEqual(op, xop) {
 			break
 		}
+		sm.px.Done(sm.lastApply)
 	}
 	sm.px.Done(sm.lastApply)
 	return nil

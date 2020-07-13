@@ -24,8 +24,8 @@ type PutAppendArgs struct {
 	Op        string // "Put" or "Append"
 
 	ID        int64 // client ID (each client has an unique id)
-	// client's seq. everytime he performs put/get/append
-	// his seq will += 1
+	// client's seq. everytime it performs put/get/append
+	// its seq will += 1
 	Seq       int
 	ConfigNum int // Number in the clients' config
 	Shard     int // from 0 ~ 9. the index of shards
@@ -49,15 +49,15 @@ type GetReply struct {
 	Value string
 }
 
-type UpdateArgs struct {
-
+type BootstrapArgs struct {
 	Shard        int
 	ConfigNum    int
 }
 
-type UpdateReply struct {
-	ShardState ShardState
-
+type BootstrapReply struct {
+	ShardState   ShardState
+	ProducerGID  int64
+	ConfigNum    int
 	Shard        int
-	Err string
+	Err          string
 }
