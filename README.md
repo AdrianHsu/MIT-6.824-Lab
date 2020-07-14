@@ -18,5 +18,5 @@
 MIT 6.824 is a core 12-unit graduate subject with lectures, readings, programming labs, an optional project, a mid-term exam, and a final exam. It will present abstractions and implementation techniques for engineering distributed systems. Major topics include fault tolerance, replication, and consistency. Much of the class consists of studying and discussing case studies of distributed systems.
 
 ### References
-[MIT 6.824 Spring 2015](http://nil.csail.mit.edu/6.824/2015/)
-[UCLA CS 134 Spring 2020](http://web.cs.ucla.edu/~ravi/CS134_S20/)
+* [MIT 6.824 Spring 2015](http://nil.csail.mit.edu/6.824/2015/)
+* [UCLA CS 134 Spring 2020](http://web.cs.ucla.edu/~ravi/CS134_S20/)
