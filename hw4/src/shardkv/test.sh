@@ -15,5 +15,6 @@ do
   sed -i '' '/paxos Dial() failed/d' ./out.txt
   sed -i '' '/ShardKV:/d' ./out.txt
   sed -i '' '/ShardMaster:/d' ./out.txt
+  sed -i '' '/Timeout:/d' ./out.txt
 done
 cat out.txt

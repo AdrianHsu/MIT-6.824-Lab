@@ -306,8 +306,8 @@ func (kv *ShardKV) Migrate(shard int) (bool, *BootstrapReply) {
 	select {
 	case <-done0:
 		return true, &reply
-	case <-time.After(1 * time.Second):
-		//log.Printf("[timeout] deadlock! %v, %v", kv.me, gid)
+	case <-time.After(500 * time.Millisecond):
+		log.Printf("Timeout: deadlock! %v, %v", kv.me, gid)
 		return false, nil
 	}
 }
@@ -343,7 +343,7 @@ func (kv *ShardKV) tick() {
 					// this ShardKV is the consumer -> ask the producer to migrate its latest ShardState
 					ok, reply := kv.Migrate(shard)
 					if !ok {
-						waitTime := 500 * ((kv.gid - 100) + 2) // 500 * ((100 - 100) + 2)
+						waitTime := 100 * ((kv.gid - 100) + 2) // 100 * ((100 - 100) + 2)
 						time.Sleep(time.Millisecond * time.Duration(waitTime))
 						return
 					} else {
