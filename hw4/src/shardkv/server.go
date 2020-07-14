@@ -343,7 +343,7 @@ func (kv *ShardKV) tick() {
 					// this ShardKV is the consumer -> ask the producer to migrate its latest ShardState
 					ok, reply := kv.Migrate(shard)
 					if !ok {
-						waitTime := 5 * (( kv.gid - 100) + 2) // 5 * ((100 - 100) + 2)
+						waitTime := 500 * ((kv.gid - 100) + 2) // 500 * ((100 - 100) + 2)
 						time.Sleep(time.Millisecond * time.Duration(waitTime))
 						return
 					} else {
