@@ -181,7 +181,7 @@ func (kv *ShardKV) Get(args *GetArgs, reply *GetReply) error {
 	kv.mu.Lock()
 	defer kv.mu.Unlock()
 	// if client's config num is not equal to mine -> it means it is sending the wrong group (old one)
-	if kv.config.Num != args.ConfigNum {
+	if kv.config.Num != args.ConfigNum || kv.gid != kv.config.Shards[key2shard(args.Key)] {
 		reply.Err = ErrWrongGroup
 		return nil
 	}
@@ -214,7 +214,7 @@ func (kv *ShardKV) PutAppend(args *PutAppendArgs, reply *PutAppendReply) error {
 	kv.mu.Lock()
 	defer kv.mu.Unlock()
 
-	if kv.config.Num != args.ConfigNum {
+	if kv.config.Num != args.ConfigNum || kv.gid != kv.config.Shards[key2shard(args.Key)] {
 		reply.Err = ErrWrongGroup
 		return nil
 	}
@@ -223,6 +223,7 @@ func (kv *ShardKV) PutAppend(args *PutAppendArgs, reply *PutAppendReply) error {
 		reply.Err = OK
 		return nil
 	}
+
 	op := Op{Operation: args.Op, Value: *args}
 	err := kv.Propose(op)
 	if err != nil {
