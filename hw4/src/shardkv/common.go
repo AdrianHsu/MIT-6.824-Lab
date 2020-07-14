@@ -61,3 +61,7 @@ type BootstrapReply struct {
 	Shard        int
 	Err          string
 }
+
+type ReconfigureArgs struct {
+	NewConfigNum    int
+}
