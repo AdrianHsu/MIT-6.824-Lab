@@ -327,9 +327,9 @@ func doConcurrent(t *testing.T, unreliable bool) {
 			//for iters := 0; iters < 1; iters++ {
 				nv := strconv.Itoa(rand.Int())
 				//nv := strconv.Itoa(me)
-				log.Printf("[test1] Append key: %v, nv %v", key, nv)
+				//log.Printf("[test1] Append key: %v, nv %v", key, nv)
 				ck.Append(key, nv)
-				log.Printf("[test1] done Append key: %v, nv %v", key, nv)
+				//log.Printf("[test1] done Append key: %v, nv %v", key, nv)
 
 				last = last + nv
 				v := ck.Get(key)
@@ -342,9 +342,9 @@ func doConcurrent(t *testing.T, unreliable bool) {
 				gi := rand.Int() % len(tc.groups)
 				gid := tc.groups[gi].gid
 				which := rand.Int()%shardmaster.NShards
-				log.Printf("[test2] Move which %v, gid %v", which, gid)
+				//log.Printf("[test2] Move which %v, gid %v", which, gid)
 				mymck.Move(which, gid)
-				log.Printf("[test2] done Move which %v, gid %v", which, gid)
+				//log.Printf("[test2] done Move which %v, gid %v", which, gid)
 
 				time.Sleep(time.Duration(rand.Int()%30) * time.Millisecond)
 			}

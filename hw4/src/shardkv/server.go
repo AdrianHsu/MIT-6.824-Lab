@@ -246,7 +246,7 @@ func (kv *ShardKV) Bootstrap(args *BootstrapArgs, reply *BootstrapReply) error {
 	defer kv.mu.Unlock()
 	//log.Printf("Bootstrap lock acquired: config num %v, shard %d, kv.gid %d, me %d",
 	//	kv.config.Num, args.Shard, kv.gid, kv.me)
-	if kv.config.Num < args.ConfigNum {
+	if kv.config.Num <= args.ConfigNum {
 		reply.Err = ErrNotReady
 		//log.Printf("ErrNotReady, Producer ConfigNum %v, Consumer ConfigNum %v, kv.gid %d, me %d",
 		//	kv.config.Num, args.ConfigNum, kv.gid, kv.me)
@@ -276,6 +276,9 @@ func (kv *ShardKV) Migrate(shard int) (bool, *BootstrapReply) {
 
 	gid := kv.config.Shards[shard]
 	servers, ok := kv.config.Groups[gid]
+	if !ok {
+		return false, nil
+	}
 	if kv.shardState[shard].ProducerGrpConfigNum[gid] >= kv.config.Num {
 		// Repeated Bootstrap Received, config num 6, shard 9, kv.gid 102, gid 100, me 1
 		// i.e., kv.shardState[shard].MaxClientSeq[gid], gid=100,
@@ -290,9 +293,6 @@ func (kv *ShardKV) Migrate(shard int) (bool, *BootstrapReply) {
 		ConfigNum: kv.config.Num}
 
 	done0 := make(chan bool)
-	if !ok {
-		return false, nil
-	}
 	var reply BootstrapReply
 	go func (args *BootstrapArgs, reply *BootstrapReply, gid int64, servers []string) {
 		for _, srv := range servers {
