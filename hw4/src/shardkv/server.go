@@ -242,17 +242,16 @@ func (kv *ShardKV) Bootstrap(args *BootstrapArgs, reply *BootstrapReply) error {
 	//log.Printf("Bootstrap: config num %v, shard %d, kv.gid %d, me %d",
 	//	kv.config.Num, args.Shard, kv.gid, kv.me)
 
+	kv.mu.Lock()
+	defer kv.mu.Unlock()
+	//log.Printf("Bootstrap lock acquired: config num %v, shard %d, kv.gid %d, me %d",
+	//	kv.config.Num, args.Shard, kv.gid, kv.me)
 	if kv.config.Num < args.ConfigNum {
 		reply.Err = ErrNotReady
 		//log.Printf("ErrNotReady, Producer ConfigNum %v, Consumer ConfigNum %v, kv.gid %d, me %d",
 		//	kv.config.Num, args.ConfigNum, kv.gid, kv.me)
 		return nil
 	}
-	kv.mu.Lock()
-	defer kv.mu.Unlock()
-	//log.Printf("Bootstrap lock acquired: config num %v, shard %d, kv.gid %d, me %d",
-	//	kv.config.Num, args.Shard, kv.gid, kv.me)
-
 
 	// We don't need this proposal! since that we will check config Num if it is the latest one.
 	// and when we were doing that, we also do Reconfigure Proposal -> so it must be the latest version
@@ -273,11 +272,7 @@ func (kv *ShardKV) Bootstrap(args *BootstrapArgs, reply *BootstrapReply) error {
 	return nil
 }
 
-func (kv *ShardKV) Migrate(shard int) {
-
-	args := &BootstrapArgs{
-		Shard:        shard,
-		ConfigNum:    kv.config.Num}
+func (kv *ShardKV) Migrate(shard int) (bool, *BootstrapReply) {
 
 	gid := kv.config.Shards[shard]
 	servers, ok := kv.config.Groups[gid]
@@ -288,35 +283,39 @@ func (kv *ShardKV) Migrate(shard int) {
 		// (since this happened before) Bootstrap Received, config num 6, shard 9, gid 102, me 1
 		log.Printf("Dismissed: Migrate, config num %v, shard %d, kv.gid %d, gid %d, me %d",
 			kv.config.Num, shard, kv.gid, gid, kv.me)
-		return
+		return true, nil
 	}
+	args := &BootstrapArgs{
+		Shard:     shard,
+		ConfigNum: kv.config.Num}
 
-	for {
-		if ok {
-			for _, srv := range servers {
-				log.Printf("Try: Migrate, config num %v, shard %d, kv.gid %d, gid %d, me %d, srv %v",
-					kv.config.Num, shard, kv.gid, gid, kv.me, srv)
-
-				var reply BootstrapReply
-				reply.Shard = args.Shard
-				newState := MakeShardState()
-				ok := call(srv, "ShardKV.Bootstrap", args, &reply)
-				if ok && (reply.Err == OK || reply.Err == ErrNoKey) { // exclude ErrNotReady -> this is an error
-					newState.Bootstrap(&reply.ShardState)
-					reply.ShardState = *newState
-					reply.ProducerGID = gid
-					reply.ConfigNum = kv.config.Num
-					op := Op{Operation: "Bootstrap", Value: reply}
-					kv.Propose(op)
-					log.Printf("Done: Migrate, config num %v, shard %d, kv.gid %d, gid %d, me %d, srv %v",
-						kv.config.Num, shard, kv.gid, gid, kv.me, srv)
-					return
-				}
+	done0 := make(chan bool)
+	if !ok {
+		return false, nil
+	}
+	var reply BootstrapReply
+	go func (args *BootstrapArgs, reply *BootstrapReply, gid int64, servers []string) {
+		for _, srv := range servers {
+			reply.Shard = args.Shard
+			newState := MakeShardState()
+			ok := call(srv, "ShardKV.Bootstrap", args, &reply)
+			if ok && (reply.Err == OK || reply.Err == ErrNoKey) { // exclude ErrNotReady -> this is an error
+				newState.Bootstrap(&reply.ShardState)
+				reply.ShardState = *newState
+				reply.ProducerGID = gid
+				reply.ConfigNum = args.ConfigNum
+				done0 <- true
+				return
 			}
 		}
-		time.Sleep(100 * time.Millisecond)
+	}(args, &reply, gid, servers)
+	select {
+	case <-done0:
+		return true, &reply
+	case <-time.After(1 * time.Second):
+		log.Printf("[timeout] deadlock! %v, %v", kv.me, gid)
+		return false, nil
 	}
-
 }
 
 //
@@ -348,7 +347,17 @@ func (kv *ShardKV) tick() {
 				if kv.config.Shards[shard] != 0 && kv.config.Shards[shard] != kv.gid &&
 					newConfig.Shards[shard] == kv.gid {
 					// this ShardKV is the consumer -> ask the producer to migrate its latest ShardState
-					kv.Migrate(shard)
+					ok, reply := kv.Migrate(shard)
+					if !ok {
+						waitTime := 5 * (( kv.gid - 100) + 2) // 5 * ((100 - 100) + 2)
+						time.Sleep(time.Millisecond * time.Duration(waitTime))
+						return
+					} else {
+						if reply != nil {
+							op := Op{Operation: "Bootstrap", Value: *reply}
+							kv.Propose(op)
+						} // else : dismissed one
+					}
 				}
 			}
 		}
