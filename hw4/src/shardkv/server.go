@@ -89,10 +89,10 @@ func MakeShardState() *ShardState {
 
 func (kv *ShardKV) Apply(op Op) {
 
-	log.Printf("Apply %v, gid %v, me %v", op, kv.gid, kv.me)
+	//log.Printf("Apply %v, gid %v, me %v", op, kv.gid, kv.me)
 	if op.Operation == Get {
 		args := op.Value.(GetArgs)
-		log.Printf("Get %v, %v", args.Key, kv.shardState[args.Shard].Database[args.Key])
+		//log.Printf("Get %v, %v", args.Key, kv.shardState[args.Shard].Database[args.Key])
 
 		if args.Seq > kv.shardState[args.Shard].MaxClientSeq[args.ID] {
 			kv.shardState[args.Shard].MaxClientSeq[args.ID] = args.Seq
@@ -102,6 +102,7 @@ func (kv *ShardKV) Apply(op Op) {
 		stateMachine := kv.shardState[args.Shard]
 		stateMachine.Database[args.Key] = args.Value
 
+		//log.Printf("After put, %v", kv.shardState[args.Shard].Database[args.Key])
 		if args.Seq > kv.shardState[args.Shard].MaxClientSeq[args.ID] {
 			kv.shardState[args.Shard].MaxClientSeq[args.ID] = args.Seq
 		}
@@ -114,7 +115,7 @@ func (kv *ShardKV) Apply(op Op) {
 		}
 		stateMachine.Database[args.Key] = value + args.Value
 
-		log.Printf("After append, %v", kv.shardState[args.Shard].Database[args.Key])
+		//log.Printf("After append, %v", kv.shardState[args.Shard].Database[args.Key])
 		if args.Seq > kv.shardState[args.Shard].MaxClientSeq[args.ID] {
 			kv.shardState[args.Shard].MaxClientSeq[args.ID] = args.Seq
 		}
@@ -122,8 +123,8 @@ func (kv *ShardKV) Apply(op Op) {
 		reply := op.Value.(BootstrapReply)
 		stateMachine := kv.shardState[reply.Shard]
 
-		log.Printf("Bootstrap Received, config num %v, shard %d, gid %d, me %d, db %v",
-			kv.config.Num, reply.Shard, kv.gid, kv.me, reply.ShardState.Database)
+		//log.Printf("Bootstrap Received, config num %v, shard %d, gid %d, me %d, db %v",
+		//	kv.config.Num, reply.Shard, kv.gid, kv.me, reply.ShardState.Database)
 		stateMachine.Bootstrap(&reply.ShardState)
 
 		if reply.ConfigNum > kv.shardState[reply.Shard].ProducerGrpConfigNum[reply.ProducerGID] {
@@ -146,7 +147,7 @@ func (kv *ShardKV) Wait(seq int) (Op, error) {
 			return value.(Op), nil
 		} else if decided == paxos.Forgotten {
 			// error
-			log.Printf("Forgotten %v", value)
+			//log.Printf("Forgotten %v", value)
 			return Op{}, errors.New("ShardKV: Forgotten")
 		}
 		time.Sleep(sleepTime)
@@ -204,21 +205,15 @@ func (kv *ShardKV) Get(args *GetArgs, reply *GetReply) error {
 		reply.Value = value
 		reply.Err = OK
 	}
-	log.Printf("Done: Get, config num %v, shard %d, gid %d, me %d",
-		kv.config.Num, args.Shard, kv.gid, kv.me)
 	return nil
 }
 
 // RPC handler for client Put and Append requests
 func (kv *ShardKV) PutAppend(args *PutAppendArgs, reply *PutAppendReply) error {
 
-	//log.Printf("putAppend: config num %v, kv.gid %d, me %d",
-	//	kv.config.Num, kv.gid, kv.me)
 	kv.mu.Lock()
 	defer kv.mu.Unlock()
-	//log.Printf("putAppend lock acquired: config num %v, kv.gid %d, me %d",
-	//	kv.config.Num, kv.gid, kv.me)
-	// log.Printf("config num %v, args %v", kv.config.Num, *args)
+
 	if kv.config.Num != args.ConfigNum {
 		reply.Err = ErrWrongGroup
 		return nil
@@ -239,13 +234,8 @@ func (kv *ShardKV) PutAppend(args *PutAppendArgs, reply *PutAppendReply) error {
 
 func (kv *ShardKV) Bootstrap(args *BootstrapArgs, reply *BootstrapReply) error {
 
-	//log.Printf("Bootstrap: config num %v, shard %d, kv.gid %d, me %d",
-	//	kv.config.Num, args.Shard, kv.gid, kv.me)
-
 	kv.mu.Lock()
 	defer kv.mu.Unlock()
-	//log.Printf("Bootstrap lock acquired: config num %v, shard %d, kv.gid %d, me %d",
-	//	kv.config.Num, args.Shard, kv.gid, kv.me)
 
 	// it must be `<=` but not `<` so that we can ensure no future GET/PUT/APPEND will lost
 	if kv.config.Num <= args.ConfigNum {
@@ -286,8 +276,9 @@ func (kv *ShardKV) Migrate(shard int) (bool, *BootstrapReply) {
 		// i.e., kv.shardState[shard].MaxClientSeq[gid], gid=100,
 		// is also = 6 but not 5 or less anymore
 		// (since this happened before) Bootstrap Received, config num 6, shard 9, gid 102, me 1
-		log.Printf("Dismissed: Migrate, config num %v, shard %d, kv.gid %d, gid %d, me %d",
-			kv.config.Num, shard, kv.gid, gid, kv.me)
+
+		//log.Printf("Dismissed: Migrate, config num %v, shard %d, kv.gid %d, gid %d, me %d",
+		//	kv.config.Num, shard, kv.gid, gid, kv.me)
 		return true, nil
 	}
 	args := &BootstrapArgs{
@@ -315,7 +306,7 @@ func (kv *ShardKV) Migrate(shard int) (bool, *BootstrapReply) {
 	case <-done0:
 		return true, &reply
 	case <-time.After(1 * time.Second):
-		log.Printf("[timeout] deadlock! %v, %v", kv.me, gid)
+		//log.Printf("[timeout] deadlock! %v, %v", kv.me, gid)
 		return false, nil
 	}
 }
@@ -358,7 +349,7 @@ func (kv *ShardKV) tick() {
 						if reply != nil {
 							op := Op{Operation: "Bootstrap", Value: *reply}
 							kv.Propose(op)
-						} // else : dismissed one
+						} // else : dismissed one -> still need to reconfigure later
 					}
 				}
 			}

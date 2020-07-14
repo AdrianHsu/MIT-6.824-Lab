@@ -1,7 +1,6 @@
 package shardkv
 
 import (
-	"log"
 	"testing"
 )
 import "shardmaster"
@@ -160,7 +159,7 @@ func TestBasic(t *testing.T) {
 			ck.Put(keys[i], vals[i])
 		}
 	}
-	log.Printf("done first part")
+	//log.Printf("done first part")
 	// are keys still there after leaves?
 	for g := 0; g < len(tc.groups)-1; g++ {
 		tc.leave(g)
