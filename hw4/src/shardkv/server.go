@@ -289,24 +289,26 @@ func (kv *ShardKV) Migrate(shard int) (bool, *BootstrapReply) {
 	done0 := make(chan bool)
 	var reply BootstrapReply
 	go func (args *BootstrapArgs, reply *BootstrapReply, gid int64, servers []string) {
-		for _, srv := range servers {
-			reply.Shard = args.Shard
-			newState := MakeShardState()
-			ok := call(srv, "ShardKV.Bootstrap", args, &reply)
-			if ok && (reply.Err == OK || reply.Err == ErrNoKey) { // exclude ErrNotReady -> this is an error
-				newState.Bootstrap(&reply.ShardState)
-				reply.ShardState = *newState
-				reply.ProducerGID = gid
-				reply.ConfigNum = args.ConfigNum
-				done0 <- true
-				return
+		for {
+			for _, srv := range servers {
+				reply.Shard = args.Shard
+				newState := MakeShardState()
+				ok := call(srv, "ShardKV.Bootstrap", args, &reply)
+				if ok && (reply.Err == OK || reply.Err == ErrNoKey) { // exclude ErrNotReady -> this is an error
+					newState.Bootstrap(&reply.ShardState)
+					reply.ShardState = *newState
+					reply.ProducerGID = gid
+					reply.ConfigNum = args.ConfigNum
+					done0 <- true
+					return
+				}
 			}
 		}
 	}(args, &reply, gid, servers)
 	select {
 	case <-done0:
 		return true, &reply
-	case <-time.After(500 * time.Millisecond):
+	case <-time.After(5000 * time.Millisecond):
 		log.Printf("Timeout: deadlock! %v, %v", kv.me, gid)
 		return false, nil
 	}
