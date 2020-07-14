@@ -246,6 +246,8 @@ func (kv *ShardKV) Bootstrap(args *BootstrapArgs, reply *BootstrapReply) error {
 	defer kv.mu.Unlock()
 	//log.Printf("Bootstrap lock acquired: config num %v, shard %d, kv.gid %d, me %d",
 	//	kv.config.Num, args.Shard, kv.gid, kv.me)
+
+	// it must be `<=` but not `<` so that we can ensure no future GET/PUT/APPEND will lost
 	if kv.config.Num <= args.ConfigNum {
 		reply.Err = ErrNotReady
 		//log.Printf("ErrNotReady, Producer ConfigNum %v, Consumer ConfigNum %v, kv.gid %d, me %d",
