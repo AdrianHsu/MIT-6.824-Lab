@@ -1,6 +1,6 @@
 ## MIT 6.824: Distributed Systems
 
-> 🏃 MIT 6.824 is where my journey of Distributed Systems began. 
+> 🏃 MIT 6.824 is where my journey of Distributed Systems began. All projects are my own individual works.
 
 ### TODO
 
