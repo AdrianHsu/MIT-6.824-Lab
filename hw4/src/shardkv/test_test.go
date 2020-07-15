@@ -358,12 +358,17 @@ func doConcurrent(t *testing.T, unreliable bool) {
 	}
 }
 
+//The two Concurrent test cases above test several clients sending Append and Get
+//operations to different shard groups concurrently while also periodically asking
+//the shard master to move shards between groups. To pass these test cases you must
+//design a correct protocol for handling concurrent operations in the presence of configuration changes.
 func TestConcurrent(t *testing.T) {
 	fmt.Printf("Test: Concurrent Put/Get/Move ...\n")
 	doConcurrent(t, false)
 	fmt.Printf("  ... Passed\n")
 }
-
+//The second concurrent test case is the same as the first one, though the test code
+//drops requests and responses randomly.
 func TestConcurrentUnreliable(t *testing.T) {
 	fmt.Printf("Test: Concurrent Put/Get/Move (unreliable) ...\n")
 	doConcurrent(t, true)

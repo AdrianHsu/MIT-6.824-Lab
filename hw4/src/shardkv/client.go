@@ -145,6 +145,7 @@ func (ck *Clerk) PutAppend(key string, value string, op string) {
 				args.Key = key
 				args.Value = value
 				args.ID = ck.clientID
+				// ck.seq is for dealing with duplicate client RPCs
 				args.Seq = ck.seq
 				args.Op = op
 				args.Shard = shard
@@ -154,12 +155,15 @@ func (ck *Clerk) PutAppend(key string, value string, op string) {
 				if ok && reply.Err == OK {
 					return
 				}
+				// When the client received ErrWrongGroup -> we don't change ck.seq
+				// instead, we just re-Query and change a group and request again
 				if ok && (reply.Err == ErrWrongGroup) {
 					continue
 				}
 			}
 		}
-
+		//It re-tries if the replica group says it is not responsible for the key;
+		//in that case, the client code asks the shard master for the latest configuration and tries again.
 		time.Sleep(100 * time.Millisecond)
 
 		// ask master for a new configuration.
