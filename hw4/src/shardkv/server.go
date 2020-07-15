@@ -135,19 +135,15 @@ func (kv *ShardKV) Apply(op Op) {
 		reply := op.Value.(BootstrapReply)
 		stateMachine := kv.shardState[reply.Shard]
 
+		stateMachine.Bootstrap(&reply.ShardState)
 		//log.Printf("Bootstrap Received, config num %v, shard %d, gid %d, me %d, db %v",
 		//	kv.config.Num, reply.Shard, kv.gid, kv.me, reply.ShardState.Database)
-
-		stateMachine.Bootstrap(&reply.ShardState)
-
 		if reply.ConfigNum > kv.shardState[reply.Shard].ProducerGrpConfigNum[reply.ProducerGID] {
 			kv.shardState[reply.Shard].ProducerGrpConfigNum[reply.ProducerGID] = reply.ConfigNum
 		}
 	} else if op.Operation == CatchUp {
 		// do nothing
 	} else if op.Operation == Reconfigure {
-		// do nothing
-
 		// Hint: perhaps a reconfiguration was entered in the log just before the Put/Append/Get
 		// and that is why we need this log-reading function Apply() instead of
 		// applying these Put/Append/Get directly.
@@ -157,6 +153,7 @@ func (kv *ShardKV) Apply(op Op) {
 }
 
 func (kv *ShardKV) Wait(seq int) (Op, error) {
+
 	sleepTime := 10 * time.Millisecond
 	for iters := 0; iters < 15; iters++ {
 		// You are allowed to assume that a majority of servers in each Paxos
@@ -165,7 +162,6 @@ func (kv *ShardKV) Wait(seq int) (Op, error) {
 		if decided == paxos.Decided {
 			return value.(Op), nil
 		} else if decided == paxos.Forgotten {
-			// error
 			//log.Printf("Forgotten %v", value)
 			return Op{}, errors.New("ShardKV: Forgotten")
 		}
@@ -202,13 +198,11 @@ func (kv *ShardKV) Get(args *GetArgs, reply *GetReply) error {
 	kv.mu.Lock()
 	defer kv.mu.Unlock()
 	// if client's config num is not equal to mine -> it means it is sending the wrong group (old one)
-
-	// When a server realized ErrWrongGroup, we don't need to update maxClientSeq
 	if kv.config.Num != args.ConfigNum || kv.gid != kv.config.Shards[key2shard(args.Key)] {
 		reply.Err = ErrWrongGroup
 		return nil
 	}
-
+	// same idea as KVPaxos
 	if args.Seq <= kv.shardState[args.Shard].MaxClientSeq[args.ID] {
 		reply.Err = OK
 		reply.Value = kv.shardState[args.Shard].Database[args.Key]
@@ -314,10 +308,12 @@ func (kv *ShardKV) Bootstrap(args *BootstrapArgs, reply *BootstrapReply) error {
 	for k, v := range kv.shardState[args.Shard].Database {
 		reply.ShardState.Database[k] = v
 	}
+
 	// Be careful about implementing at-most-once semantic for RPC.
 	// When a server sends shards to another, the server needs to send the clients state as well.
 	// Think about how the receiver of the shards should update its own clients state.
 	// Is it ok for the receiver to replace its clients state with the received one? YES!
+
 	for k, v := range kv.shardState[args.Shard].MaxClientSeq {
 		reply.ShardState.MaxClientSeq[k] = v
 	}
@@ -346,18 +342,21 @@ func (kv *ShardKV) Migrate(shard int) (bool, *BootstrapReply) {
 		//	kv.config.Num, shard, kv.gid, gid, kv.me)
 		return true, nil
 	}
+
 	args := &BootstrapArgs{
 		Shard:     shard,
 		ConfigNum: kv.config.Num}
 
 	done0 := make(chan bool)
 	var reply BootstrapReply
+
 	go func (args *BootstrapArgs, reply *BootstrapReply, gid int64, servers []string) {
-		for {
+		for { // infinite loop
 			for _, srv := range servers {
 				reply.Shard = args.Shard
 				newState := MakeShardState()
 				ok := call(srv, "ShardKV.Bootstrap", args, &reply)
+
 				if ok && (reply.Err == OK || reply.Err == ErrNoKey) { // exclude ErrNotReady -> this is an error
 					newState.Bootstrap(&reply.ShardState)
 					reply.ShardState = *newState
@@ -369,6 +368,7 @@ func (kv *ShardKV) Migrate(shard int) (bool, *BootstrapReply) {
 			}
 		}
 	}(args, &reply, gid, servers)
+
 	select {
 	case <-done0:
 		return true, &reply
@@ -392,15 +392,18 @@ func (kv *ShardKV) tick() {
 	// I always query the config Num one by one (e.g., config.Num = 5 -> 6 -> 7 -> 8...)
 	// so that no config will be missing. and thus, no migration will be lost.
 	newConfig := kv.sm.Query(kv.config.Num + 1)
+
 	// A single instance of the shardmaster service will assign shards to replica groups.
 	// When this assignment changes, replica groups will have to hand off shards to each other.
 	if newConfig.Num != kv.config.Num {
+
 		op := Op{Operation: "CatchUp"}
 		var isCustomer = false
+
 		for shard := 0; shard < shardmaster.NShards; shard++ {
+
 			if kv.config.Shards[shard] != 0 && kv.config.Shards[shard] != kv.gid &&
 				newConfig.Shards[shard] == kv.gid {
-
 				// Example: configuration is from cfg1 to CFG2, and shard S1 is from G1 to G2
 				// How to migrate - push or pull? should G1 push S1 or G2 pull S1?
 				// Ans. G2 should pull when doing re-configuration.
@@ -408,8 +411,10 @@ func (kv *ShardKV) tick() {
 			}
 		}
 		if isCustomer {
+
 			kv.Propose(op)
 			ops := make([]Op, 10)
+
 			for shard := 0; shard < shardmaster.NShards; shard++ {
 				if kv.config.Shards[shard] != 0 && kv.config.Shards[shard] != kv.gid &&
 					newConfig.Shards[shard] == kv.gid {
@@ -440,10 +445,12 @@ func (kv *ShardKV) tick() {
 				kv.Propose(op)
 			}
 		}
+
 		// we do reconfiguration in paxos instead of replacing it directly!
 		// kv.config = newConfig
 		xop := Op{Operation: "Reconfigure", Value: ReconfigureArgs{NewConfigNum: kv.config.Num + 1}}
 		kv.Propose(xop)
+
 		// Hint: After a server has moved to a new view, it can leave the shards that it is
 		// not owning in the new view undeleted (i.e, the producer will remain the same)
 		// This will simplify the server implementation.
